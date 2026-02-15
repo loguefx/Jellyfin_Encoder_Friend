@@ -1,0 +1,363 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    padding: 30px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 40px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid #eee;
+}
+
+header h1 {
+    color: #667eea;
+    font-size: 2.5em;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    color: #666;
+    font-size: 1.1em;
+}
+
+.section {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.section h2 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1.5em;
+}
+
+.unc-paths {
+    margin-top: 15px;
+}
+
+.path-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: white;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+}
+
+.path-text {
+    flex: 1;
+    font-family: 'Courier New', monospace;
+    color: #555;
+    word-break: break-all;
+}
+
+.add-path {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    align-items: center;
+}
+
+.add-path input[type="text"] {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.add-path input[type="file"] {
+    display: none;
+}
+
+button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #5568d3;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background: #5a6268;
+}
+
+.btn-remove {
+    background: #dc3545;
+    color: white;
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.btn-remove:hover {
+    background: #c82333;
+}
+
+.btn-large {
+    padding: 15px 30px;
+    font-size: 16px;
+    margin-right: 10px;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.schedule-config {
+    margin-top: 15px;
+}
+
+.schedule-config label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+.schedule-details {
+    margin-top: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.schedule-details input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-left: 10px;
+}
+
+.backup-config {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    align-items: center;
+}
+
+.backup-config input[type="text"] {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.backup-config input[type="file"] {
+    display: none;
+}
+
+.ffmpeg-config {
+    margin-top: 15px;
+}
+
+.config-item {
+    margin-bottom: 15px;
+}
+
+.config-item label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #333;
+}
+
+.config-item input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+}
+
+.help-text {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #666;
+    font-style: italic;
+}
+
+.actions {
+    margin-top: 15px;
+}
+
+.status-info {
+    margin-top: 15px;
+}
+
+.status-info p {
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 30px;
+    background: #e9ecef;
+    border-radius: 15px;
+    overflow: hidden;
+    margin-top: 15px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 0.3s ease;
+    width: 0%;
+}
+
+.file-list {
+    margin-top: 15px;
+}
+
+.file-item {
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    border-left: 3px solid #dc3545;
+    transition: all 0.3s ease;
+}
+
+.file-item-converting {
+    animation: pulse-border 2s ease-in-out infinite;
+    position: relative;
+}
+
+.file-item-converted {
+    opacity: 0.9;
+}
+
+@keyframes pulse-border {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(255, 152, 0, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(255, 152, 0, 0.6);
+    }
+}
+
+.spinning-icon {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.file-path {
+    font-family: 'Courier New', monospace;
+    color: #333;
+    margin-bottom: 5px;
+    word-break: break-all;
+}
+
+.file-reason {
+    color: #dc3545;
+    font-size: 14px;
+    font-style: italic;
+}
+
+#conversion-details {
+    margin-top: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 6px;
+}
+
+#conversion-details ul {
+    margin-top: 10px;
+    margin-left: 20px;
+}
+
+#conversion-details li {
+    margin-bottom: 5px;
+    color: #dc3545;
+}
+
+/* Navigation tabs */
+.nav-tabs {
+    margin-top: 20px;
+    border-bottom: 2px solid #dee2e6;
+    display: flex;
+    gap: 0;
+    justify-content: center;
+}
+
+.nav-tab {
+    padding: 12px 24px;
+    text-decoration: none;
+    color: #495057;
+    font-weight: 500;
+    border-bottom: 3px solid transparent;
+    background: #f8f9fa;
+    display: inline-block;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: -2px;
+}
+
+.nav-tab:hover {
+    background: #e9ecef;
+    color: #007bff;
+}
+
+.nav-tab.active {
+    border-bottom: 3px solid #007bff;
+    background: white;
+    color: #007bff;
+}
+

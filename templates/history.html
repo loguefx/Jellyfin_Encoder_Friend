@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversion History - Jellyfin Audio Service</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .history-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .history-header {
+            margin-bottom: 30px;
+        }
+        .history-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+        .stat-card h3 {
+            margin: 0 0 5px 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .stat-card .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+        }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .history-table thead {
+            background: #007bff;
+            color: white;
+        }
+        .history-table th {
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        .history-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .history-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        .history-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .file-path {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #333;
+            word-break: break-all;
+            max-width: 600px;
+        }
+        .file-name {
+            font-weight: 500;
+            color: #007bff;
+        }
+        .date-time {
+            white-space: nowrap;
+            color: #666;
+            font-size: 0.9em;
+        }
+        .subtitle-badge {
+            display: inline-block;
+            background: #28a745;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+        .no-files {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        .no-files h2 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .refresh-btn {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="history-container">
+        <header>
+            <h1>Conversion History</h1>
+            <p class="subtitle">All files converted by the Jellyfin Audio Service</p>
+            <div class="nav-tabs">
+                <a href="/" class="nav-tab">Configuration</a>
+                <a href="/history" class="nav-tab active">Process History</a>
+            </div>
+        </header>
+
+        <div class="history-stats">
+            <div class="stat-card">
+                <h3>Total Converted Files</h3>
+                <div class="stat-value" id="total-count">{{ converted_files|length }}</div>
+            </div>
+            <div class="stat-card">
+                <h3>Files with Subtitles</h3>
+                <div class="stat-value" id="subtitle-count">{{ converted_files|selectattr('subtitle_file')|list|length }}</div>
+            </div>
+        </div>
+
+        <button class="btn-secondary refresh-btn" onclick="refreshHistory()">Refresh</button>
+
+        {% if converted_files %}
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th style="width: 30%;">File Path</th>
+                    <th style="width: 20%;">Converted Date</th>
+                    <th style="width: 15%;">File Size</th>
+                    <th style="width: 35%;">Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for file in converted_files %}
+                <tr>
+                    <td>
+                        <div class="file-path">
+                            <div class="file-name">{{ file.path|basename }}</div>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 4px;">{{ file.path|dirname }}</div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="date-time">
+                            {% if file.cached_at %}
+                                {{ file.cached_at|datetime_format }}
+                            {% else %}
+                                Unknown
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if file.mtime %}
+                            <span style="color: #666; font-size: 0.9em;">{{ file.mtime|file_size }}</span>
+                        {% else %}
+                            <span style="color: #999;">-</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if file.subtitle_file %}
+                            <span class="subtitle-badge">Subtitle Extracted</span>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 4px;">
+                                {{ file.subtitle_file|basename }}
+                            </div>
+                        {% else %}
+                            <span style="color: #999; font-size: 0.9em;">No subtitles</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="no-files">
+            <h2>No Converted Files</h2>
+            <p>No files have been converted yet. Start a scan and conversion to see history here.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function refreshHistory() {
+            window.location.reload();
+        }
+
+        // Auto-refresh every 30 seconds if on history page
+        setInterval(function() {
+            // Only refresh if page is visible
+            if (!document.hidden) {
+                fetch('/api/history')
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Reload page to show updated data
+                            window.location.reload();
+                        }
+                    })
+                    .catch(err => console.error('Error refreshing history:', err));
+            }
+        }, 30000); // 30 seconds
+    </script>
+</body>
+</html>
+

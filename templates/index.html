@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Jellyfin Audio Service - Configuration</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Jellyfin Audio Conversion Service</h1>
+            <p class="subtitle">Monitor and convert video files to AAC-compliant MP4 format (subtitles extracted to SRT files)</p>
+            <div class="nav-tabs">
+                <a href="/" class="nav-tab active">Configuration</a>
+                <a href="/history" class="nav-tab">Process History</a>
+            </div>
+        </header>
+
+        <div class="section">
+            <h2>UNC Paths Configuration</h2>
+            <div class="unc-paths">
+                <div id="unc-paths-list">
+                    {% if config.unc_paths %}
+                        {% for path_config in config.unc_paths %}
+                        {% set path = path_config.path if path_config is mapping else path_config %}
+                        {% set path_index = loop.index0 %}
+                        {% if path %}
+                        <div class="path-item" data-path="{{ path|e }}" data-index="{{ path_index }}">
+                            <div style="display: flex; flex-direction: column; gap: 5px; flex: 1;">
+                                <span class="path-text">{{ path }}</span>
+                                <div id="credentials-display-{{ path_index }}">
+                                    {% if path_config is mapping and (path_config.unc_username or path_config.unc_password) %}
+                                    <div style="font-size: 12px; margin-top: 5px;">
+                                        <div><strong>User:</strong> {{ path_config.unc_username or '(not set)' }}</div>
+                                        <div><strong>Pass:</strong> {% if path_config.unc_password %}{{ '*' * (path_config.unc_password|length) }}{% else %}(not set){% endif %}</div>
+                                    </div>
+                                    {% else %}
+                                    <span style="font-size: 12px; color: #666;">Using global credentials</span>
+                                    {% endif %}
+                                </div>
+                                <div id="credentials-edit-{{ path_index }}" style="display: none; margin-top: 5px;">
+                                    <div style="display: flex; flex-direction: column; gap: 5px; min-width: 200px;">
+                                        <input type="text" id="edit-username-{{ path_index }}" class="input" placeholder="Username (optional)" value="{% if path_config is mapping %}{{ path_config.unc_username or '' }}{% endif %}" style="font-size: 12px; padding: 4px 8px;" />
+                                        <input type="password" id="edit-password-{{ path_index }}" class="input" placeholder="Password (optional)" value="{% if path_config is mapping %}{{ path_config.unc_password or '' }}{% endif %}" style="font-size: 12px; padding: 4px 8px;" />
+                                        <div style="display: flex; gap: 5px; margin-top: 5px;">
+                                            <button class="btn-secondary" onclick="savePathCredentials({{ path_index }})" style="font-size: 11px; padding: 6px 12px; background-color: #28a745; color: white; border: none;">Save Credentials</button>
+                                            <button class="btn-secondary" onclick="cancelEditCredentials({{ path_index }})" style="font-size: 11px; padding: 6px 12px;">Cancel</button>
+                                        </div>
+                                        <small style="color: #666; font-size: 11px; display: block; margin-top: 3px;">
+                                            Click "Save Credentials" to save your changes
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 5px;">
+                                <button class="btn-secondary" onclick="startEditCredentials({{ path_index }})" id="edit-btn-{{ path_index }}" style="font-size: 11px; padding: 4px 8px;">{% if path_config is mapping and path_config.unc_username %}Edit{% else %}Set{% endif %} Credentials</button>
+                                <button class="btn-remove" data-path="{{ path|e }}" onclick="removePath(this)">Remove</button>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </div>
+                <div class="add-path">
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="new-path" placeholder="\\\\server\\share\\path or C:\\path\\to\\folder" style="flex: 1;" />
+                            <input type="file" id="path-browser" webkitdirectory directory multiple style="display: none;" onchange="handlePathBrowse(event)" />
+                            <button class="btn-secondary" onclick="browsePath()">Browse</button>
+                            <button class="btn-secondary" onclick="testPath()">Test Path</button>
+                            <button class="btn-primary" onclick="addPath()">Add Path</button>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="new-path-username" placeholder="Username (optional, e.g., DOMAIN\\user)" style="flex: 1;" />
+                            <input type="password" id="new-path-password" placeholder="Password (optional)" style="flex: 1;" />
+                        </div>
+                        <small style="color: #666; font-size: 12px;">
+                            Optional: Enter credentials for this specific path. If left empty, global credentials from Settings will be used.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Scan Schedule</h2>
+            <div class="schedule-config">
+                <label>
+                    <input type="checkbox" id="schedule-enabled" {% if config.scan_schedule.enabled %}checked{% endif %} />
+                    Enable scheduled scans
+                </label>
+                <div class="schedule-details">
+                    <label>
+                        Interval (hours):
+                        <input type="number" id="schedule-interval" value="{{ config.scan_schedule.interval_hours }}" min="1" />
+                    </label>
+                    <label>
+                        Time:
+                        <input type="time" id="schedule-time" value="{{ config.scan_schedule.time }}" />
+                    </label>
+                    <button class="btn-secondary" onclick="saveSchedule()">Save Schedule</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Backup Location</h2>
+            <div class="backup-config">
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="backup-location" value="{{ config.backup_location }}" style="flex: 1;" placeholder="\\\\server\\share\\backups or C:\\path\\to\\backups" />
+                    <input type="file" id="backup-browser" webkitdirectory directory style="display: none;" onchange="handleBackupBrowse(event)" />
+                    <button class="btn-secondary" onclick="browseBackup()">Browse</button>
+                    <button class="btn-secondary" onclick="saveBackupLocation()">Save</button>
+                </div>
+                <div style="margin-top: 10px;">
+                    <label style="font-size: 12px; color: #666;">Credentials for UNC backup path (if backup location is a network path):</label>
+                    <div style="display: flex; gap: 10px; margin-top: 5px;">
+                        <input type="text" id="backup-unc-username" placeholder="Username (e.g., DOMAIN\\user)" style="flex: 1; font-size: 12px; padding: 6px 10px;" value="{{ config.backup_unc_username or '' }}" />
+                        <input type="password" id="backup-unc-password" placeholder="Password" style="flex: 1; font-size: 12px; padding: 6px 10px;" value="{{ config.backup_unc_password or '' }}" />
+                    </div>
+                    <small style="color: #666; font-size: 11px;">Required when backup location is a UNC path (e.g. \\\\server\\share\\backups) that needs authentication.</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>FFmpeg Configuration</h2>
+            <div class="ffmpeg-config">
+                <div class="config-item">
+                    <label for="ffmpeg-path">FFmpeg Path:</label>
+                    <input type="text" id="ffmpeg-path" value="{{ config.ffmpeg_path }}" placeholder="ffmpeg or C:\path\to\ffmpeg.exe" />
+                </div>
+                <div class="config-item">
+                    <label for="ffprobe-path">FFprobe Path:</label>
+                    <input type="text" id="ffprobe-path" value="{{ config.ffprobe_path }}" placeholder="ffprobe or C:\path\to\ffprobe.exe" />
+                </div>
+                <button class="btn-secondary" onclick="saveFFmpegPaths()">Save FFmpeg Paths</button>
+                <p class="help-text">If FFmpeg is in your system PATH, you can use just "ffmpeg" and "ffprobe". Otherwise, provide the full path to the executables.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Cache Management</h2>
+            <div class="cache-info">
+                <div class="cache-stats">
+                    <p><strong>Total Cached Files:</strong> <span id="cache-total">-</span></p>
+                    <p><strong>Compliant Files:</strong> <span id="cache-compliant">-</span></p>
+                    <p><strong>Converted Files:</strong> <span id="cache-converted">-</span></p>
+                    <p><strong>Last Updated:</strong> <span id="cache-updated">-</span></p>
+                </div>
+                <div class="cache-actions">
+                    <button class="btn-secondary" onclick="refreshCacheStats()">Refresh Stats</button>
+                    <button class="btn-secondary" onclick="clearCache()">Clear Cache</button>
+                </div>
+                <p class="help-text">The cache tracks converted and compliant files to skip them during scans. Clear the cache if you want to rescan all files.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Actions</h2>
+            <div class="actions">
+                <button class="btn-primary btn-large" onclick="startScan()" id="scan-btn">
+                    Start Scan
+                </button>
+                <button class="btn-secondary btn-large" onclick="convertAll()" id="convert-btn" disabled>
+                    Convert All Non-Compliant Files
+                </button>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Scan Status</h2>
+            <div id="scan-status">
+                <div class="status-info">
+                    <p><strong>Status:</strong> <span id="status-text">Idle</span></p>
+                    <p><strong>Last Scan:</strong> <span id="last-scan">Never</span></p>
+                    <p><strong>Compliant Files:</strong> <span id="compliant-count" style="color: green; font-weight: bold;">0</span></p>
+                    <p><strong>Non-Compliant Files:</strong> <span id="non-compliant-count">0</span></p>
+                </div>
+                <div id="progress-bar" class="progress-bar" style="display: none;">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" id="conversion-status-section" style="display: none;">
+            <h2>Conversion Status</h2>
+            <div id="conversion-status">
+                <div class="status-info">
+                    <p><strong>Status:</strong> <span id="conversion-status-text">Idle</span></p>
+                    <p><strong>Progress:</strong> <span id="conversion-progress-text">0 / 0</span></p>
+                    <p><strong>Current File:</strong> <span id="conversion-current-file" style="font-family: monospace; font-size: 0.9em;">-</span></p>
+                    <p><strong>Success:</strong> <span id="conversion-success-count" style="color: green;">0</span> | 
+                       <strong>Failed:</strong> <span id="conversion-failed-count" style="color: red;">0</span></p>
+                </div>
+                <div id="conversion-progress-bar" class="progress-bar">
+                    <div id="conversion-progress-fill" class="progress-fill"></div>
+                </div>
+                <div id="recent-errors" style="display: none; margin-top: 20px; padding: 15px; background: #fff5f5; border-radius: 6px; border-left: 4px solid #dc3545;">
+                    <h3 style="color: #dc3545; margin-bottom: 10px;">Recent Failures</h3>
+                    <div id="recent-errors-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" id="results-section" style="display: none;">
+            <h2>Non-Compliant Files</h2>
+            <div id="non-compliant-list" class="file-list"></div>
+        </div>
+
+        <div class="section" id="conversion-results" style="display: none;">
+            <h2>Conversion Results</h2>
+            <div id="conversion-details"></div>
+            <div id="failed-files-section" style="display: none; margin-top: 20px;">
+                <h3 style="color: #dc3545;">Failed Files</h3>
+                <div id="failed-files-list" class="file-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let scanInterval = null;
+
+        function browsePath() {
+            document.getElementById('path-browser').click();
+        }
+
+        function handlePathBrowse(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                let fullPath = '';
+                const file = files[0];
+                
+                try {
+                    // Try to get the full path (works in some browsers/Electron)
+                    if (file.path) {
+                        // Full path available (older browsers or Electron)
+                        const path = file.path;
+                        // Extract directory (remove filename)
+                        const lastSlash = Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/'));
+                        if (lastSlash > 0) {
+                            fullPath = path.substring(0, lastSlash + 1);
+                        }
+                    } else if (file.webkitRelativePath) {
+                        // Modern browsers - only relative path available
+                        // Extract the folder name from the relative path
+                        const parts = file.webkitRelativePath.split('/');
+                        if (parts.length > 1) {
+                            const folderName = parts[0];
+                            // Show folder name and prompt for full path
+                            const userPath = prompt(
+                                'Browser security limits access to full paths.\n\n' +
+                                'Selected folder: ' + folderName + '\n\n' +
+                                'Please enter the full path:\n' +
+                                'For UNC paths: \\\\server\\share\\path\n' +
+                                'For local paths: C:\\path\\to\\folder',
+                                folderName
+                            );
+                            if (userPath) {
+                                fullPath = userPath.trim();
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error getting path:', e);
+                }
+                
+                // Set the path in the input if we have one
+                if (fullPath) {
+                    document.getElementById('new-path').value = fullPath;
+                } else if (files.length > 0) {
+                    // Show helpful message
+                    alert('Please enter the full path manually.\n\n' +
+                          'For UNC paths (network shares): \\\\server\\share\\path\n' +
+                          'For local paths: C:\\path\\to\\folder\n\n' +
+                          'Note: Browsers limit access to full file paths for security reasons.');
+                }
+            }
+            // Reset the input so the same folder can be selected again
+            event.target.value = '';
+        }
+
+        function browseBackup() {
+            document.getElementById('backup-browser').click();
+        }
+
+        function handleBackupBrowse(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                const file = files[0];
+                let fullPath = '';
+                
+                try {
+                    if (file.path) {
+                        // Full path available (older browsers or Electron)
+                        const path = file.path;
+                        const lastSlash = Math.max(path.lastIndexOf('\\'), path.lastIndexOf('/'));
+                        if (lastSlash > 0) {
+                            fullPath = path.substring(0, lastSlash + 1);
+                        }
+                    } else if (file.webkitRelativePath) {
+                        // Modern browsers - prompt for full path
+                        const parts = file.webkitRelativePath.split('/');
+                        if (parts.length > 1) {
+                            const folderName = parts[0];
+                            const userPath = prompt(
+                                'Browser security limits access to full paths.\n\n' +
+                                'Selected folder: ' + folderName + '\n\n' +
+                                'Please enter the full backup path:',
+                                folderName
+                            );
+                            if (userPath) {
+                                fullPath = userPath.trim();
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error getting backup path:', e);
+                }
+                
+                if (fullPath) {
+                    document.getElementById('backup-location').value = fullPath;
+                } else if (files.length > 0) {
+                    alert('Please enter the full backup path manually.\n\n' +
+                          'Example: C:\\backups or \\\\server\\share\\backups');
+                }
+            }
+            event.target.value = '';
+        }
+
+        function testPath() {
+            const input = document.getElementById('new-path');
+            const path = input.value.trim();
+            
+            if (!path) {
+                alert('Please enter a path to test');
+                return;
+            }
+
+            // Test path access
+            fetch('/api/unc_paths/test', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path: path})
+            })
+            .then(async r => {
+                const contentType = r.headers.get('Content-Type') || '';
+                if (!contentType.includes('application/json')) {
+                    const text = await r.text();
+                    throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
+                }
+                const text = await r.text();
+                if (!text || text.trim() === '') {
+                    throw new Error('Empty response from server');
+                }
+                try {
+                    return JSON.parse(text);
+                } catch (parseErr) {
+                    throw new Error(`Invalid JSON response: ${parseErr.message}`);
+                }
+            })
+            .then(testData => {
+                if (testData.success) {
+                    let message = testData.message || 'Path is accessible: ' + path;
+                    if (testData.warning) {
+                        message += '\n\nNote: ' + testData.warning;
+                    }
+                    alert(message);
+                } else {
+                    alert('Error: ' + (testData.error || 'Failed to access path'));
+                }
+            })
+            .catch(err => {
+                alert('Error testing path: ' + err.message);
+            });
+        }
+
+        function addPath() {
+            const input = document.getElementById('new-path');
+            const usernameInput = document.getElementById('new-path-username');
+            const passwordInput = document.getElementById('new-path-password');
+            const path = input.value.trim();
+            const username = usernameInput ? usernameInput.value.trim() : '';
+            const password = passwordInput ? passwordInput.value.trim() : '';
+            
+            if (!path) {
+                alert('Please enter a path');
+                return;
+            }
+
+            // Like subtitle program - just add the path without testing
+            // Path validation happens later during scanning
+            addPathDirectly(path, username, password);
+        }
+
+        function addPathDirectly(path, username = '', password = '') {
+            const input = document.getElementById('new-path');
+            const usernameInput = document.getElementById('new-path-username');
+            const passwordInput = document.getElementById('new-path-password');
+            
+            fetch('/api/unc_paths', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    path: path,
+                    unc_username: username || null,
+                    unc_password: password || null
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    input.value = '';
+                    if (usernameInput) usernameInput.value = '';
+                    if (passwordInput) passwordInput.value = '';
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || data.error_message || 'Failed to add path'));
+                }
+            })
+            .catch(err => {
+                alert('Error: ' + err.message);
+            });
+        }
+
+        function startEditCredentials(index) {
+            // Hide display, show edit fields
+            document.getElementById('credentials-display-' + index).style.display = 'none';
+            document.getElementById('credentials-edit-' + index).style.display = 'block';
+            document.getElementById('edit-btn-' + index).style.display = 'none';
+        }
+
+        function cancelEditCredentials(index) {
+            // Show display, hide edit fields
+            document.getElementById('credentials-display-' + index).style.display = 'block';
+            document.getElementById('credentials-edit-' + index).style.display = 'none';
+            document.getElementById('edit-btn-' + index).style.display = 'inline-block';
+        }
+
+        function savePathCredentials(index) {
+            const pathItem = document.querySelector(`[data-index="${index}"]`);
+            if (!pathItem) {
+                alert('Error: Could not find path item');
+                return;
+            }
+            
+            const path = pathItem.getAttribute('data-path');
+            const usernameInput = document.getElementById('edit-username-' + index);
+            const passwordInput = document.getElementById('edit-password-' + index);
+            
+            const username = usernameInput ? usernameInput.value.trim() : '';
+            const password = passwordInput ? passwordInput.value.trim() : '';
+            
+            // Update path with credentials
+            fetch('/api/unc_paths', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    path: path,
+                    unc_username: username || null,
+                    unc_password: password || null
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Credentials saved successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to save credentials'));
+                }
+            })
+            .catch(err => {
+                alert('Error: ' + err.message);
+            });
+        }
+
+        function removePath(buttonElement) {
+            // Get path from data attribute or parameter
+            let path;
+            if (typeof buttonElement === 'string') {
+                // Backward compatibility: if string passed directly
+                path = buttonElement;
+            } else if (buttonElement && buttonElement.dataset) {
+                // Get from data-path attribute (dataset converts data-path to dataset.path)
+                path = buttonElement.dataset.path;
+                // If not found, try getAttribute as fallback
+                if (!path) {
+                    path = buttonElement.getAttribute('data-path');
+                }
+            } else if (buttonElement && buttonElement.getAttribute) {
+                // Fallback: use getAttribute directly
+                path = buttonElement.getAttribute('data-path');
+            }
+            
+            if (!path) {
+                console.error('Invalid path parameter to removePath', buttonElement);
+                alert('Error: Could not determine path to remove');
+                return;
+            }
+            
+            // #region agent log
+            console.log('removePath called with path:', path, 'type:', typeof path);
+            fetch('http://127.0.0.1:7242/ingest/c1c179b4-e9ab-4e78-bbd4-c409e1abdc73', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    sessionId: 'debug-session',
+                    runId: 'run2',
+                    hypothesisId: 'ALL',
+                    location: 'index.html:removePath',
+                    message: 'removePath entry',
+                    data: {path: path, path_type: typeof path, buttonElement: buttonElement ? 'exists' : 'null'},
+                    timestamp: Date.now()
+                })
+            }).catch(() => {});
+            // #endregion
+            if (!confirm('Remove this path: ' + path + '?')) return;
+
+            const url = `/api/unc_paths?path=${encodeURIComponent(path)}`;
+            // #region agent log
+            console.log('Fetching URL:', url);
+            fetch('http://127.0.0.1:7242/ingest/c1c179b4-e9ab-4e78-bbd4-c409e1abdc73', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    sessionId: 'debug-session',
+                    runId: 'run2',
+                    hypothesisId: 'H1',
+                    location: 'index.html:removePath',
+                    message: 'before fetch',
+                    data: {url: url, path: path},
+                    timestamp: Date.now()
+                })
+            }).catch(() => {});
+            // #endregion
+            fetch(url, {
+                method: 'DELETE'
+            })
+            .then(async r => {
+                // #region agent log
+                console.log('Response status:', r.status, 'Content-Type:', r.headers.get('Content-Type'));
+                fetch('http://127.0.0.1:7242/ingest/c1c179b4-e9ab-4e78-bbd4-c409e1abdc73', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        sessionId: 'debug-session',
+                        runId: 'run2',
+                        hypothesisId: 'ALL',
+                        location: 'index.html:removePath',
+                        message: 'response received',
+                        data: {status: r.status, statusText: r.statusText, contentType: r.headers.get('Content-Type')},
+                        timestamp: Date.now()
+                    })
+                }).catch(() => {});
+                // #endregion
+                
+                // Check if response is JSON
+                const contentType = r.headers.get('Content-Type') || '';
+                if (!contentType.includes('application/json')) {
+                    const text = await r.text();
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/c1c179b4-e9ab-4e78-bbd4-c409e1abdc73', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            sessionId: 'debug-session',
+                            runId: 'run2',
+                            hypothesisId: 'H2',
+                            location: 'index.html:removePath',
+                            message: 'non-JSON response',
+                            data: {status: r.status, responseText: text.substring(0, 500)},
+                            timestamp: Date.now()
+                        })
+                    }).catch(() => {});
+                    // #endregion
+                    throw new Error(`Server returned non-JSON response (${r.status}): ${text.substring(0, 100)}`);
+                }
+                
+                // Try to parse JSON, but handle empty or invalid responses
+                const text = await r.text();
+                if (!text || text.trim() === '') {
+                    throw new Error('Empty response from server');
+                }
+                
+                try {
+                    return JSON.parse(text);
+                } catch (parseErr) {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/c1c179b4-e9ab-4e78-bbd4-c409e1abdc73', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            sessionId: 'debug-session',
+                            runId: 'run2',
+                            hypothesisId: 'H3',
+                            location: 'index.html:removePath',
+                            message: 'JSON parse error',
+                            data: {responseText: text.substring(0, 500), parseError: parseErr.message},
+                            timestamp: Date.now()
+                        })
+                    }).catch(() => {});
+                    // #endregion
+                    throw new Error(`Invalid JSON response: ${parseErr.message}. Response: ${text.substring(0, 100)}`);
+                }
+            })
+            .then(data => {
+                // #region agent log
+                console.log('Response data:', data);
+                fetch('http://127.0.0.1:7242/ingest/c1c179b4-e9ab-4e78-bbd4-c409e1abdc73', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        sessionId: 'debug-session',
+                        runId: 'run2',
+                        hypothesisId: 'ALL',
+                        location: 'index.html:removePath',
+                        message: 'response data received',
+                        data: data,
+                        timestamp: Date.now()
+                    })
+                }).catch(() => {});
+                // #endregion
+                if (data && data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + (data && data.error ? data.error : 'Failed to remove path'));
+                }
+            })
+            .catch(err => {
+                // #region agent log
+                console.error('Error in removePath:', err);
+                fetch('http://127.0.0.1:7242/ingest/c1c179b4-e9ab-4e78-bbd4-c409e1abdc73', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        sessionId: 'debug-session',
+                        runId: 'run2',
+                        hypothesisId: 'H4',
+                        location: 'index.html:removePath',
+                        message: 'error in removePath',
+                        data: {error: err.message, error_type: err.constructor.name, stack: err.stack},
+                        timestamp: Date.now()
+                    })
+                }).catch(() => {});
+                // #endregion
+                alert('Error removing path: ' + err.message);
+            });
+        }
+
+        function saveSchedule() {
+            const enabled = document.getElementById('schedule-enabled').checked;
+            const interval = parseInt(document.getElementById('schedule-interval').value);
+            const time = document.getElementById('schedule-time').value;
+
+            fetch('/api/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    scan_schedule: {
+                        enabled: enabled,
+                        interval_hours: interval,
+                        time: time
+                    }
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Schedule saved');
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to save schedule'));
+                }
+            })
+            .catch(err => {
+                alert('Error: ' + err.message);
+            });
+        }
+
+        function saveBackupLocation() {
+            const location = document.getElementById('backup-location').value.trim();
+            const username = document.getElementById('backup-unc-username')?.value?.trim() || null;
+            const password = document.getElementById('backup-unc-password')?.value || null;
+
+            fetch('/api/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    backup_location: location,
+                    backup_unc_username: username,
+                    backup_unc_password: password
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Backup location saved');
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to save backup location'));
+                }
+            })
+            .catch(err => {
+                alert('Error: ' + err.message);
+            });
+        }
+
+        function saveFFmpegPaths() {
+            const ffmpegPath = document.getElementById('ffmpeg-path').value.trim();
+            const ffprobePath = document.getElementById('ffprobe-path').value.trim();
+
+            if (!ffmpegPath || !ffprobePath) {
+                alert('Please enter both FFmpeg and FFprobe paths');
+                return;
+            }
+
+            fetch('/api/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    ffmpeg_path: ffmpegPath,
+                    ffprobe_path: ffprobePath
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('FFmpeg paths saved. Please restart the service for changes to take effect.');
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to save FFmpeg paths'));
+                }
+            })
+            .catch(err => {
+                alert('Error: ' + err.message);
+            });
+        }
+
+        function startScan() {
+            const btn = document.getElementById('scan-btn');
+            btn.disabled = true;
+            btn.textContent = 'Scanning...';
+
+            fetch('/api/scan', {method: 'POST'})
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    updateScanStatus();
+                    if (!scanInterval) {
+                        scanInterval = setInterval(updateScanStatus, 2000);
+                    }
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to start scan'));
+                    btn.disabled = false;
+                    btn.textContent = 'Start Scan';
+                }
+            })
+            .catch(err => {
+                alert('Error: ' + err.message);
+                btn.disabled = false;
+                btn.textContent = 'Start Scan';
+            });
+        }
+
+        function updateScanStatus() {
+            fetch('/api/scan/status')
+            .then(r => r.json())
+            .then(status => {
+                document.getElementById('status-text').textContent = 
+                    status.running ? 'Scanning...' : 'Idle';
+                document.getElementById('last-scan').textContent = 
+                    status.last_scan_time ? new Date(status.last_scan_time).toLocaleString() : 'Never';
+                document.getElementById('non-compliant-count').textContent = 
+                    status.non_compliant_files ? status.non_compliant_files.length : 0;
+                document.getElementById('compliant-count').textContent = 
+                    status.compliant_files_count || 0;
+
+                if (status.running) {
+                    document.getElementById('progress-bar').style.display = 'block';
+                    const progress = status.progress || 0;
+                    document.getElementById('progress-fill').style.width = progress + '%';
+                } else {
+                    document.getElementById('progress-bar').style.display = 'none';
+                    document.getElementById('scan-btn').disabled = false;
+                    document.getElementById('scan-btn').textContent = 'Start Scan';
+                    
+                    if (scanInterval) {
+                        clearInterval(scanInterval);
+                        scanInterval = null;
+                    }
+                }
+
+                if (status.non_compliant_files && status.non_compliant_files.length > 0) {
+                    document.getElementById('results-section').style.display = 'block';
+                    document.getElementById('convert-btn').disabled = status.converting;
+                    
+                    const list = document.getElementById('non-compliant-list');
+                    const convertedFiles = status.converted_files || [];
+                    const currentFile = status.conversion_current_file || '';
+                    const fileProgress = status.conversion_file_progress || 0;
+                    
+                    list.innerHTML = status.non_compliant_files.map(file => {
+                        const isConverted = convertedFiles.includes(file.path);
+                        const isConverting = file.path === currentFile;
+                        const fileName = file.path.split('\\').pop() || file.path.split('/').pop() || file.path;
+                        
+                        // Extract episode info from filename (e.g., "Show_S01E03_Title.mp4")
+                        let episodeInfo = '';
+                        const episodeMatch = fileName.match(/(S\d+E\d+)/i);
+                        if (episodeMatch) {
+                            episodeInfo = episodeMatch[1];
+                        }
+                        
+                        let statusIcon = '';
+                        let statusText = '';
+                        let itemClass = 'file-item';
+                        let itemStyle = '';
+                        
+                        if (isConverted) {
+                            statusIcon = '<span style="color: green; font-size: 1.5em; margin-right: 12px; font-weight: bold;">✓</span>';
+                            statusText = '<div style="color: green; font-weight: bold; font-size: 16px; margin-top: 5px;">Converted</div>';
+                            itemClass += ' file-item-converted';
+                            itemStyle = 'border: 2px solid #4CAF50; background: #f0fdf4;';
+                        } else if (isConverting) {
+                            statusIcon = '<span class="spinning-icon" style="color: #ff9800; font-size: 1.5em; margin-right: 12px; font-weight: bold;">⟳</span>';
+                            statusText = `<div style="color: #ff9800; font-weight: bold; font-size: 16px; margin-top: 5px; margin-bottom: 8px;">
+                                            ${episodeInfo ? `Converting ${episodeInfo}...` : 'Converting...'} ${fileProgress}%
+                                          </div>
+                                          <div class="file-progress-bar" style="width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; margin-top: 5px; overflow: hidden;">
+                                              <div style="width: ${fileProgress}%; height: 100%; background: linear-gradient(90deg, #ff9800, #ff5722); border-radius: 4px; transition: width 0.3s;"></div>
+                                          </div>`;
+                            itemClass += ' file-item-converting';
+                            itemStyle = 'border: 3px solid #ff9800; background: #fff3e0; box-shadow: 0 0 10px rgba(255, 152, 0, 0.3);';
+                        } else {
+                            itemStyle = 'border-left: 3px solid #dc3545;';
+                        }
+                        
+                        return `
+                        <div class="${itemClass}" style="${itemStyle}">
+                            <div style="display: flex; align-items: flex-start;">
+                                ${statusIcon}
+                                <div style="flex: 1;">
+                                    <div class="file-path" style="${isConverted ? 'color: #666;' : ''}">${file.path}</div>
+                                    ${!isConverted ? `<div class="file-reason">${file.reason} (→ MP4)</div>` : ''}
+                                    ${statusText}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    }).join('');
+                }
+
+                // Update conversion status
+                if (status.converting) {
+                    document.getElementById('conversion-status-section').style.display = 'block';
+                    document.getElementById('conversion-status-text').textContent = 'Converting...';
+                    document.getElementById('convert-btn').disabled = true;
+                    
+                    const current = status.conversion_progress || 0;
+                    const total = status.conversion_total || 1;
+                    const progress = total > 0 ? Math.round((current / total) * 100) : 0;
+                    const fileProgress = status.conversion_file_progress || 0;
+                    
+                    document.getElementById('conversion-progress-text').textContent = `${current} / ${total} (${progress}%)`;
+                    document.getElementById('conversion-progress-fill').style.width = progress + '%';
+                    document.getElementById('conversion-success-count').textContent = status.conversion_success_count || 0;
+                    document.getElementById('conversion-failed-count').textContent = status.conversion_failed_count || 0;
+                    
+                    const currentFile = status.conversion_current_file || '-';
+                    const fileName = currentFile.split('\\').pop() || currentFile.split('/').pop() || currentFile;
+                    document.getElementById('conversion-current-file').textContent = `${fileName} (${fileProgress}%)`;
+                    
+                    // Show recent errors during conversion
+                    if (status.conversion_results && status.conversion_results.failed && status.conversion_results.failed.length > 0) {
+                        const recentErrorsDiv = document.getElementById('recent-errors');
+                        const recentErrorsList = document.getElementById('recent-errors-list');
+                        recentErrorsDiv.style.display = 'block';
+                        
+                        const failedFiles = status.conversion_results.failed || [];
+                        const errors = status.conversion_results.errors || {};
+                        // Show last 5 failed files
+                        const recentFailures = failedFiles.slice(-5).reverse();
+                        
+                        recentErrorsList.innerHTML = recentFailures.map(filePath => {
+                            const error = errors[filePath] || 'Unknown error - no error message provided';
+                            const fileName = filePath.split('\\').pop() || filePath.split('/').pop() || filePath;
+                            const escapedError = error.replace(/</g, '&lt;').replace(/>/g, '&gt;').substring(0, 200);
+                            const escapedPath = filePath.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            return `
+                                <div style="margin-bottom: 10px; padding: 8px; background: white; border-radius: 4px; border-left: 3px solid #dc3545;">
+                                    <div style="font-weight: bold; color: #dc3545; margin-bottom: 4px;">${fileName}</div>
+                                    <div style="font-size: 0.85em; color: #666; font-family: monospace; word-break: break-word;">${escapedError}${error.length > 200 ? '...' : ''}</div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        document.getElementById('recent-errors').style.display = 'none';
+                    }
+                } else {
+                    if (status.conversion_total > 0) {
+                        document.getElementById('conversion-status-section').style.display = 'block';
+                        document.getElementById('conversion-status-text').textContent = 'Complete';
+                        document.getElementById('convert-btn').disabled = false;
+                    }
+                }
+
+                if (status.conversion_results) {
+                    document.getElementById('conversion-results').style.display = 'block';
+                    const results = status.conversion_results;
+                    const details = document.getElementById('conversion-details');
+                    details.innerHTML = `
+                        <p><strong style="color: green;">Success:</strong> ${results.success ? results.success.length : 0}</p>
+                        <p><strong style="color: red;">Failed:</strong> ${results.failed ? results.failed.length : 0}</p>
+                    `;
+                    
+                    // Show failed files with detailed errors
+                    const failedSection = document.getElementById('failed-files-section');
+                    const failedList = document.getElementById('failed-files-list');
+                    const failedFiles = results.failed || [];
+                    const errors = results.errors || {};
+                    
+                    if (failedFiles.length > 0) {
+                        failedSection.style.display = 'block';
+                        failedList.innerHTML = failedFiles.map(filePath => {
+                            const error = errors[filePath] || 'Unknown error - no error message provided';
+                            const fileName = filePath.split('\\').pop() || filePath.split('/').pop() || filePath;
+                            // Escape HTML to prevent XSS and show properly
+                            const escapedError = error.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            const escapedPath = filePath.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                            return `
+                                <div class="file-item" style="border-left: 3px solid #dc3545; background: #fff5f5; margin-bottom: 15px;">
+                                    <div class="file-path" style="color: #dc3545; font-weight: bold; margin-bottom: 8px;">${escapedPath}</div>
+                                    <div style="color: #dc3545; padding: 12px; background: #ffe6e6; border-radius: 4px; border: 1px solid #dc3545;">
+                                        <strong style="font-size: 1.1em;">Error:</strong><br>
+                                        <span style="font-family: monospace; font-size: 0.9em; word-break: break-word;">${escapedError}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        failedSection.style.display = 'none';
+                    }
+                }
+
+                if (status.error) {
+                    alert('Error: ' + status.error);
+                }
+            })
+            .catch(err => {
+                console.error('Error updating status:', err);
+            });
+        }
+
+        function convertAll() {
+            if (!confirm('Convert all non-compliant files? This will create backups and replace the originals.')) {
+                return;
+            }
+
+            const btn = document.getElementById('convert-btn');
+            btn.disabled = true;
+            btn.textContent = 'Converting...';
+
+            fetch('/api/scan/status')
+            .then(r => r.json())
+            .then(status => {
+                const files = status.non_compliant_files.map(f => f.path);
+                
+                if (files.length === 0) {
+                    alert('No files to convert');
+                    btn.disabled = false;
+                    btn.textContent = 'Convert All Non-Compliant Files';
+                    return;
+                }
+                
+                return fetch('/api/convert', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({files: files})
+                });
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    // Show conversion status section
+                    document.getElementById('conversion-status-section').style.display = 'block';
+                    updateScanStatus();
+                    if (!scanInterval) {
+                        scanInterval = setInterval(updateScanStatus, 1000); // Update every second during conversion
+                    }
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to start conversion'));
+                    btn.disabled = false;
+                    btn.textContent = 'Convert All Non-Compliant Files';
+                }
+            })
+            .catch(err => {
+                alert('Error: ' + err.message);
+                btn.disabled = false;
+                btn.textContent = 'Convert All Non-Compliant Files';
+            });
+        }
+
+        function refreshCacheStats() {
+            fetch('/api/cache/stats')
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.stats) {
+                    const stats = data.stats;
+                    document.getElementById('cache-total').textContent = stats.total_files || 0;
+                    document.getElementById('cache-compliant').textContent = stats.compliant_files || 0;
+                    document.getElementById('cache-converted').textContent = stats.converted_files || 0;
+                    if (stats.last_updated) {
+                        const date = new Date(stats.last_updated);
+                        document.getElementById('cache-updated').textContent = date.toLocaleString();
+                    } else {
+                        document.getElementById('cache-updated').textContent = 'Never';
+                    }
+                } else {
+                    console.error('Error loading cache stats:', data.error);
+                }
+            })
+            .catch(err => {
+                console.error('Error fetching cache stats:', err);
+            });
+        }
+
+        function clearCache() {
+            if (!confirm('Clear the file cache? This will force a full rescan of all files on the next scan.')) {
+                return;
+            }
+
+            fetch('/api/cache/clear', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Cache cleared successfully');
+                    refreshCacheStats();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to clear cache'));
+                }
+            })
+            .catch(err => {
+                console.error('Error clearing cache:', err);
+                alert('Error: ' + err.message);
+            });
+        }
+
+        // Initial status update
+        updateScanStatus();
+        setInterval(updateScanStatus, 5000);
+        
+        // Load cache stats on page load
+        window.addEventListener('load', function() {
+            refreshCacheStats();
+            // #region agent log
+            // Debug: Check if remove buttons exist and have correct data attributes
+            const removeButtons = document.querySelectorAll('.btn-remove');
+            console.log('Found', removeButtons.length, 'remove buttons on page load');
+            removeButtons.forEach((btn, idx) => {
+                const path = btn.dataset.path || btn.getAttribute('data-path');
+                console.log(`Button ${idx}: path="${path}", onclick="${btn.getAttribute('onclick')}"`);
+            });
+            // #endregion
+        });
+    </script>
+</body>
+</html>
+
