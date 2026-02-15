@@ -178,8 +178,11 @@
                 <div class="status-info">
                     <p><strong>Status:</strong> <span id="status-text">Idle</span></p>
                     <p><strong>Last Scan:</strong> <span id="last-scan">Never</span></p>
+                    <p><strong>Total video files found:</strong> <span id="total-files-found" style="font-weight: bold;">0</span> <span id="total-files-note" style="font-size: 0.9em; color: #666;">(should match file count in your library folder)</span></p>
                     <p><strong>Compliant Files:</strong> <span id="compliant-count" style="color: green; font-weight: bold;">0</span></p>
                     <p><strong>Non-Compliant Files:</strong> <span id="non-compliant-count">0</span></p>
+                    <p id="scan-breakdown" style="font-size: 0.9em; color: #555; margin-top: 8px; display: none;"><strong>Breakdown:</strong> <span id="breakdown-text"></span></p>
+                    <p style="font-size: 0.85em; color: #666; margin-top: 6px;">Only video files (.mp4, .mkv, .avi, etc.) in your configured UNC path(s) are counted. If the total does not match your folder, add all library paths above.</p>
                 </div>
                 <div id="progress-bar" class="progress-bar" style="display: none;">
                     <div id="progress-fill" class="progress-fill"></div>
@@ -772,10 +775,30 @@
                     status.running ? 'Scanning...' : 'Idle';
                 document.getElementById('last-scan').textContent = 
                     status.last_scan_time ? new Date(status.last_scan_time).toLocaleString() : 'Never';
+                const totalFound = status.total_files != null ? status.total_files : 0;
+                document.getElementById('total-files-found').textContent = totalFound;
                 document.getElementById('non-compliant-count').textContent = 
                     status.non_compliant_files ? status.non_compliant_files.length : 0;
                 document.getElementById('compliant-count').textContent = 
                     status.compliant_files_count || 0;
+                const stats = status.scan_stats || {};
+                const skipped = stats.files_skipped_cache || 0;
+                const probeFailed = stats.files_probe_failed || 0;
+                const compliantScan = stats.files_compliant || 0;
+                const nonCompliantScan = stats.files_non_compliant != null ? stats.files_non_compliant : (status.non_compliant_files ? status.non_compliant_files.length : 0);
+                const errors = stats.files_error || 0;
+                if (totalFound > 0 && (skipped > 0 || probeFailed > 0 || compliantScan > 0 || nonCompliantScan > 0)) {
+                    const parts = [];
+                    if (compliantScan > 0) parts.push(compliantScan + ' compliant (this scan)');
+                    if (nonCompliantScan > 0) parts.push(nonCompliantScan + ' non-compliant');
+                    if (skipped > 0) parts.push(skipped + ' skipped (cached)');
+                    if (probeFailed > 0) parts.push(probeFailed + ' probe failed');
+                    if (errors > 0) parts.push(errors + ' errors');
+                    document.getElementById('breakdown-text').textContent = parts.join(' + ') + ' = ' + totalFound;
+                    document.getElementById('scan-breakdown').style.display = 'block';
+                } else {
+                    document.getElementById('scan-breakdown').style.display = 'none';
+                }
 
                 if (status.running) {
                     document.getElementById('progress-bar').style.display = 'block';
