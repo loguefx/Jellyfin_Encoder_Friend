@@ -2,49 +2,38 @@
 
 This guide explains how to create and use the MSI installer for the Jellyfin Audio Service.
 
-## Creating the MSI Installer
+## Getting the MSI
 
-1. **Prerequisites:**
-   - Python 3.8 or higher installed
-   - All project dependencies installed (`pip install -r requirements.txt`)
-   - cx_Freeze installed (`pip install cx_Freeze`)
+- **From GitHub Releases:** Go to your repository’s **Releases** page. Create a new release with a tag (e.g. `v1.0.0`) and publish. The GitHub Action runs, builds the MSI, and attaches it to that release. Download the `.msi` from the release assets. (You can also push a tag from the command line: `git tag v1.0.0 && git push origin v1.0.0`; the Action will create the release and attach the MSI.)
+- **Build locally:** Run `build_msi.bat` or `python setup.py bdist_msi`. The MSI is created in the `dist` directory.
 
-2. **Build the MSI:**
-   - Run `build_msi.bat` (double-click it or run from command prompt)
-   - The script will automatically install cx_Freeze if needed
-   - The MSI file will be created in the `dist` directory
+## Installing on Target Server
 
-3. **Alternative method (manual):**
+1. **Run the MSI installer** (requires Administrator rights):
+   - Right-click the MSI file and select "Install"
+   - Or run: `msiexec /i JellyfinAudioService-1.0.0-win64.msi`
+   - Follow the installation wizard
+
+2. **Windows service is installed automatically** by the MSI. You do **not** need to run any PowerShell or Command Prompt commands to register the service.
+
+3. **Start the Service** (if it is not set to auto-start):
+   - Open Windows Services (services.msc), find "Jellyfin Audio Conversion Service", then Right-click → Start
+   - Or from an elevated command prompt: `"C:\Program Files\JellyfinAudioService\JellyfinAudioService.exe" start`
+
+4. **Configure the Service:**
+   - Open the web interface at http://localhost:8080
+   - Configure UNC paths, scan schedules, and other settings
+
+## Creating the MSI Installer (for developers)
+
+1. **Prerequisites:** Python 3.8+, dependencies (`pip install -r requirements.txt`), and cx_Freeze (`pip install cx_Freeze`).
+
+2. **Build:** Run `build_msi.bat` or:
    ```batch
    pip install cx_Freeze
    python setup.py bdist_msi
    ```
-
-## Installing on Target Server
-
-1. **Copy the MSI file** to your target server
-
-2. **Run the MSI installer** (requires Administrator rights):
-   - Right-click the MSI file and select "Install"
-   - Or run from command prompt: `msiexec /i JellyfinAudioService-1.0.0-win64.msi`
-   - Follow the installation wizard
-
-3. **Install the Windows Service:**
-   - After MSI installation, **you MUST run PowerShell or Command Prompt as Administrator**
-   - **Right-click** on PowerShell or Command Prompt and select **"Run as Administrator"**
-   - Navigate to the installation directory (typically `C:\Program Files\JellyfinAudioService\`)
-   - Run: `.\JellyfinAudioService.exe install`
-   - **Note:** If you see "Access is denied" error, you did not run as Administrator
-
-4. **Start the Service:**
-   - Run: `JellyfinAudioService.exe start`
-   - Or use Windows Services Manager (services.msc):
-     - Find "Jellyfin Audio Conversion Service"
-     - Right-click and select "Start"
-
-5. **Configure the Service:**
-   - Access the web interface at http://localhost:8080
-   - Configure UNC paths, scan schedules, and other settings
+   The MSI is created in the `dist` directory.
 
 ## Important Notes
 
@@ -66,15 +55,7 @@ This guide explains how to create and use the MSI installer for the Jellyfin Aud
 
 ## Uninstalling
 
-1. **Stop and Remove the Service:**
-   - Open Command Prompt as Administrator
-   - Run: `JellyfinAudioService.exe stop`
-   - Run: `JellyfinAudioService.exe remove`
-
-2. **Uninstall the Application:**
-   - Use Windows "Add or Remove Programs" (Settings > Apps)
-   - Find "JellyfinAudioService" and click Uninstall
-   - Or run: `msiexec /x JellyfinAudioService-1.0.0-win64.msi`
+**Uninstall from Windows:** Use "Add or Remove Programs" (Settings > Apps), find "JellyfinAudioService", and click Uninstall. The MSI automatically stops and removes the Windows service before removing files; you do not need to run any commands manually.
 
 ## Troubleshooting
 

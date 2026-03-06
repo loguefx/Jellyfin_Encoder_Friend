@@ -821,11 +821,13 @@
                     
                     const list = document.getElementById('non-compliant-list');
                     const convertedFiles = status.converted_files || [];
+                    const failedFiles = (status.conversion_results && status.conversion_results.failed) ? status.conversion_results.failed : [];
                     const currentFile = status.conversion_current_file || '';
                     const fileProgress = status.conversion_file_progress || 0;
                     
                     list.innerHTML = status.non_compliant_files.map(file => {
                         const isConverted = convertedFiles.includes(file.path);
+                        const isFailed = failedFiles.includes(file.path);
                         const isConverting = file.path === currentFile;
                         const fileName = file.path.split('\\').pop() || file.path.split('/').pop() || file.path;
                         
@@ -846,6 +848,11 @@
                             statusText = '<div style="color: green; font-weight: bold; font-size: 16px; margin-top: 5px;">Converted</div>';
                             itemClass += ' file-item-converted';
                             itemStyle = 'border: 2px solid #4CAF50; background: #f0fdf4;';
+                        } else if (isFailed) {
+                            statusIcon = '<span style="color: #dc3545; font-size: 1.5em; margin-right: 12px; font-weight: bold;">✗</span>';
+                            statusText = '<div style="color: #dc3545; font-weight: bold; font-size: 16px; margin-top: 5px;">Failed</div>';
+                            itemClass += ' file-item-failed';
+                            itemStyle = 'border-left: 3px solid #dc3545; background: #fff5f5;';
                         } else if (isConverting) {
                             statusIcon = '<span class="spinning-icon" style="color: #ff9800; font-size: 1.5em; margin-right: 12px; font-weight: bold;">⟳</span>';
                             statusText = `<div style="color: #ff9800; font-weight: bold; font-size: 16px; margin-top: 5px; margin-bottom: 8px;">
@@ -857,6 +864,8 @@
                             itemClass += ' file-item-converting';
                             itemStyle = 'border: 3px solid #ff9800; background: #fff3e0; box-shadow: 0 0 10px rgba(255, 152, 0, 0.3);';
                         } else {
+                            statusIcon = '<span style="color: #999; font-size: 1.5em; margin-right: 12px;">○</span>';
+                            statusText = '<div style="color: #666; font-size: 14px; margin-top: 5px;">Pending</div>';
                             itemStyle = 'border-left: 3px solid #dc3545;';
                         }
                         
@@ -926,6 +935,18 @@
                         document.getElementById('conversion-status-section').style.display = 'block';
                         document.getElementById('conversion-status-text').textContent = 'Complete';
                         document.getElementById('convert-btn').disabled = false;
+                        const total = status.conversion_total || 0;
+                        document.getElementById('conversion-progress-text').textContent = `${total} / ${total} (100%)`;
+                        document.getElementById('conversion-progress-fill').style.width = '100%';
+                        document.getElementById('conversion-current-file').textContent = '-';
+                        // Keep top Success/Failed in sync with Conversion Results (same source of truth)
+                        const results = status.conversion_results;
+                        if (results) {
+                            const successCount = results.success ? results.success.length : 0;
+                            const failedCount = results.failed ? results.failed.length : 0;
+                            document.getElementById('conversion-success-count').textContent = successCount;
+                            document.getElementById('conversion-failed-count').textContent = failedCount;
+                        }
                     }
                 }
 

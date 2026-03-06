@@ -1054,6 +1054,7 @@ def run_conversion(file_paths):
                     results['success'].append(file_path)
                     with scan_lock:
                         scan_status['conversion_success_count'] += 1
+                        scan_status['converted_files'] = list(results['success'])
                         # Update results in real-time (make a copy to ensure it's updated)
                         scan_status['conversion_results'] = {
                             'success': list(results['success']),

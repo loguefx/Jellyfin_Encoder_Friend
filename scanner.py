@@ -17,6 +17,17 @@ import unc_auth
 logger = logging.getLogger(__name__)
 # Debug log path (relative to this file so it works from any install path)
 _DEBUG_LOG_PATH = Path(__file__).resolve().parent / ".cursor" / "debug.log"
+# Session debug log for this debug run (local vs UNC path scan)
+_SESSION_LOG = Path(__file__).resolve().parent / "debug-966f7d.log"
+
+def _session_log(msg: str, data: dict, hypothesis_id: str, location: str):
+    try:
+        import time as _t
+        entry = {"sessionId": "966f7d", "hypothesisId": hypothesis_id, "location": location, "message": msg, "data": data, "timestamp": int(_t.time() * 1000)}
+        with open(str(_SESSION_LOG), 'a', encoding='utf-8') as f:
+            f.write(json.dumps(entry) + '\n')
+    except Exception:
+        pass
 
 # Lazy import transcoder to avoid circular dependency
 # transcoder imports scanner, so we import it only when needed
@@ -236,24 +247,11 @@ def scan_directory(directory: Path, recursive: bool = True) -> List[Path]:
     video_files = []
     skipped_backups = 0
     total_dirs_scanned = 0
-    
+
     # #region agent log
-    import json
-    log_entry_start = {
-        "sessionId": "debug-session",
-        "runId": "scan-debug",
-        "hypothesisId": "H4",
-        "location": "scanner.py:scan_directory",
-        "message": "Starting directory scan",
-        "data": {"directory": str(directory), "recursive": recursive},
-        "timestamp": int(__import__('time').time() * 1000)
-    }
-    try:
-        with open(str(_DEBUG_LOG_PATH), 'a', encoding='utf-8') as f:
-            f.write(json.dumps(log_entry_start) + '\n')
-    except: pass
+    _session_log("scan_directory entry", {"directory": str(directory), "exists": os.path.exists(str(directory)), "recursive": recursive}, "H2", "scanner.py:scan_directory")
     # #endregion
-    
+
     try:
         if recursive:
             # #region agent log
@@ -457,7 +455,11 @@ def scan_unc_paths() -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
     unc_paths = [pc.get("path") for pc in path_configs]  # For backward compatibility
     non_compliant = []
     ffprobe_error_logged = False
-    
+
+    # #region agent log
+    _session_log("Paths to scan (from config)", {"paths": [str(p) for p in unc_paths], "is_unc": [unc_auth.is_unc_path(str(p)) for p in unc_paths]}, "H3", "scanner.py:scan_unc_paths")
+    # #endregion
+
     # Statistics tracking
     stats = {
         'total_files_found': 0,
@@ -533,42 +535,25 @@ def scan_unc_paths() -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
         # Validation checks (os.path.exists, os.access) may fail for UNC paths
         # even when they're accessible, so we just try to scan and catch exceptions
         # #region agent log
-        import json
         import time as time_module
-        log_entry_path_check = {
-            "sessionId": "debug-session",
-            "runId": "scan-debug",
-            "hypothesisId": "H1",
-            "location": "scanner.py:scan_unc_paths",
-            "message": "Starting scan attempt",
-            "data": {"unc_path": str(unc_path), "path_type": type(unc_path).__name__},
-            "timestamp": int(time_module.time() * 1000)
-        }
-        try:
-            with open(str(_DEBUG_LOG_PATH), 'a', encoding='utf-8') as f:
-                f.write(json.dumps(log_entry_path_check) + '\n')
-        except: pass
+        _session_log("Starting scan attempt", {"unc_path": str(unc_path), "is_unc_path": unc_auth.is_unc_path(str(unc_path))}, "H1", "scanner.py:scan_unc_paths")
         # #endregion
-        
+
         # Like subtitle program - pass string path directly, not Path object
         # UNC paths work better with string paths in os.walk()
         try:
             # #region agent log
-            log_entry_before_scan = {
-                "sessionId": "debug-session",
-                "runId": "scan-debug",
-                "hypothesisId": "H3",
-                "location": "scanner.py:scan_unc_paths",
-                "message": "Before scan_directory call",
-                "data": {"unc_path": str(unc_path), "unc_path_type": type(unc_path).__name__},
-                "timestamp": int(time_module.time() * 1000)
-            }
+            path_str = str(unc_path)
+            path_obj_for_log = Path(unc_path)
             try:
-                with open(str(_DEBUG_LOG_PATH), 'a', encoding='utf-8') as f:
-                    f.write(json.dumps(log_entry_before_scan) + '\n')
-            except: pass
+                resolved = str(path_obj_for_log.resolve())
+                exists_resolved = os.path.exists(resolved)
+            except Exception as res_e:
+                resolved = str(res_e)
+                exists_resolved = False
+            _session_log("Before scan_directory", {"path": path_str, "resolved": resolved, "exists": exists_resolved}, "H4", "scanner.py:scan_unc_paths")
             # #endregion
-            
+
             # Like subtitle program - pass string path directly to scan_directory
             # scan_directory will convert to Path internally for os.walk(str(path))
             path_obj = Path(unc_path)
@@ -581,7 +566,7 @@ def scan_unc_paths() -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
                 "location": "scanner.py:scan_unc_paths",
                 "message": "scan_directory succeeded",
                 "data": {"unc_path": str(unc_path), "video_file_count": len(video_files)},
-                "timestamp": int(time_module.time() * 1000)
+                "timestamp": int(__import__('time').time() * 1000)
             }
             try:
                 with open(str(_DEBUG_LOG_PATH), 'a', encoding='utf-8') as f:
@@ -591,40 +576,19 @@ def scan_unc_paths() -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
             logger.info(f"Found {len(video_files)} video file(s) in {unc_path} (path {unc_path_idx}/{len(unc_paths)})")
             stats['total_files_found'] += len(video_files)
             if len(video_files) == 0:
+                # #region agent log
+                _session_log("Scan returned 0 video files", {"unc_path": str(unc_path), "is_unc": unc_auth.is_unc_path(str(unc_path))}, "H2,H4", "scanner.py:scan_unc_paths")
+                # #endregion
                 logger.warning(f"WARNING: No video files found in {unc_path} - check if path is correct and accessible")
         except PermissionError as e:
             # #region agent log
-            log_entry_permission = {
-                "sessionId": "debug-session",
-                "runId": "scan-debug",
-                "hypothesisId": "H4",
-                "location": "scanner.py:scan_unc_paths",
-                "message": "PermissionError during scan",
-                "data": {"unc_path": str(unc_path), "error": str(e)},
-                "timestamp": int(time_module.time() * 1000)
-            }
-            try:
-                with open(str(_DEBUG_LOG_PATH), 'a', encoding='utf-8') as f:
-                    f.write(json.dumps(log_entry_permission) + '\n')
-            except: pass
+            _session_log("PermissionError during scan", {"unc_path": str(unc_path), "error": str(e), "is_unc": unc_auth.is_unc_path(str(unc_path))}, "H2,H5", "scanner.py:scan_unc_paths")
             # #endregion
             logger.error(f"Permission denied accessing path: {unc_path}: {e}")
             continue
         except Exception as e:
             # #region agent log
-            log_entry_exception = {
-                "sessionId": "debug-session",
-                "runId": "scan-debug",
-                "hypothesisId": "H5",
-                "location": "scanner.py:scan_unc_paths",
-                "message": "Exception during scan",
-                "data": {"unc_path": str(unc_path), "error": str(e), "error_type": type(e).__name__},
-                "timestamp": int(time_module.time() * 1000)
-            }
-            try:
-                with open(str(_DEBUG_LOG_PATH), 'a', encoding='utf-8') as f:
-                    f.write(json.dumps(log_entry_exception) + '\n')
-            except: pass
+            _session_log("Exception during scan", {"unc_path": str(unc_path), "error": str(e), "error_type": type(e).__name__, "is_unc": unc_auth.is_unc_path(str(unc_path))}, "H2,H5", "scanner.py:scan_unc_paths")
             # #endregion
             logger.error(f"Error accessing path {unc_path}: {e}", exc_info=True)
             continue

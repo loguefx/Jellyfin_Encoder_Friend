@@ -1,5 +1,5 @@
 flask==3.0.0
-pywin32==306
+pywin32>=306
 schedule==1.2.0
 ffmpeg-python==0.2.0
 

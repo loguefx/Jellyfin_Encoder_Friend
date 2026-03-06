@@ -31,6 +31,10 @@ if Path("file_cache.json").exists():
     include_files.append(("file_cache.json", "file_cache.json"))
 if Path("install_service_helper.bat").exists():
     include_files.append(("install_service_helper.bat", "install_service_helper.bat"))
+if Path("InstallServiceCA.bat").exists():
+    include_files.append(("InstallServiceCA.bat", "InstallServiceCA.bat"))
+if Path("UninstallServiceCA.bat").exists():
+    include_files.append(("UninstallServiceCA.bat", "UninstallServiceCA.bat"))
 if Path("post_install.bat").exists():
     include_files.append(("post_install.bat", "post_install.bat"))
 if Path("diagnose_service.bat").exists():
@@ -141,12 +145,28 @@ executables = [
     ),
 ]
 
+# Custom actions: run batch files so install/uninstall never fail the MSI (exit 0 always).
+# Type 3106 = 34 (exe in directory) + 3072 (deferred, elevated). Source = TARGETDIR, Target = command line.
+_msi_custom_actions = [
+    ("InstallJellyfinService", 3106, "TARGETDIR", 'cmd.exe /c InstallServiceCA.bat'),
+    ("UninstallJellyfinService", 3106, "TARGETDIR", 'cmd.exe /c UninstallServiceCA.bat'),
+]
+_msi_install_sequence = [
+    ("InstallJellyfinService", "NOT REMOVE", 6601),      # After files copied; only on install
+    ("UninstallJellyfinService", 'REMOVE~="ALL"', 1400), # Before RemoveFiles; only on uninstall
+]
+msi_data = {
+    "CustomAction": _msi_custom_actions,
+    "InstallExecuteSequence": _msi_install_sequence,
+}
+
 # MSI options - Install to 64-bit Program Files (not x86)
 msi_options = {
     "add_to_path": False,
     "initial_target_dir": r"[ProgramFiles64Folder]JellyfinAudioService",  # Use 64-bit folder
     "upgrade_code": "{A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D}",
     "all_users": True,  # Install for all users (requires Program Files)
+    "data": msi_data,
 }
 
 setup(

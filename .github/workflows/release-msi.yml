@@ -1,0 +1,53 @@
+# Build MSI and publish to GitHub Releases when a version tag is pushed.
+# Push a tag (e.g. v1.0.0) or create a release in GitHub; the MSI is built and attached.
+
+name: Build and Release MSI
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-msi:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pip and build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install cx_Freeze
+
+      - name: Build MSI
+        run: python setup.py bdist_msi
+
+      - name: Verify MSI was built
+        run: |
+          $msi = Get-ChildItem -Path dist -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $msi) { Write-Error "No MSI file found in dist"; exit 1 }
+          Write-Host "MSI: $($msi.FullName) ($($msi.Length) bytes)"
+
+      - name: Upload MSI to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.msi
+          draft: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: JellyfinAudioService-MSI
+          path: dist/*.msi
