@@ -146,14 +146,14 @@ executables = [
 ]
 
 # Custom actions: run batch files so install/uninstall never fail the MSI (exit 0 always).
-# Type 3106 = 34 (exe in directory) + 3072 (deferred, elevated). Source = TARGETDIR, Target = command line.
+# Type 3106 = 34 (exe in directory) + 3072 (deferred, elevated). Must run between InstallInitialize and InstallFinalize (else error 2762).
 _msi_custom_actions = [
     ("InstallJellyfinService", 3106, "TARGETDIR", 'cmd.exe /c InstallServiceCA.bat'),
     ("UninstallJellyfinService", 3106, "TARGETDIR", 'cmd.exe /c UninstallServiceCA.bat'),
 ]
 _msi_install_sequence = [
-    ("InstallJellyfinService", "NOT REMOVE", 6601),      # After files copied; only on install
-    ("UninstallJellyfinService", 'REMOVE~="ALL"', 1400), # Before RemoveFiles; only on uninstall
+    ("InstallJellyfinService", "NOT REMOVE", 6500),      # After InstallFiles, before InstallFinalize (6600)
+    ("UninstallJellyfinService", 'REMOVE~="ALL"', 1550), # After InstallInitialize (1500), before RemoveFiles
 ]
 msi_data = {
     "CustomAction": _msi_custom_actions,
