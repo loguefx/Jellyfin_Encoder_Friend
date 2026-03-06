@@ -30,17 +30,20 @@ jobs:
       - name: Build MSI
         run: python setup.py bdist_msi
 
-      - name: Verify MSI was built
+      - name: Verify MSI and prepare for upload
+        id: msi
         run: |
           $msi = Get-ChildItem -Path dist -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $msi) { Write-Error "No MSI file found in dist"; exit 1 }
           Write-Host "MSI: $($msi.FullName) ($($msi.Length) bytes)"
+          Copy-Item -LiteralPath $msi.FullName -Destination "JellyfinAudioService-win64.msi"
+          echo "msi_name=JellyfinAudioService-win64.msi" >> $env:GITHUB_OUTPUT
 
       - name: Upload MSI to Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.msi
+          files: JellyfinAudioService-win64.msi
           draft: false
           generate_release_notes: true
         env:
@@ -50,4 +53,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: JellyfinAudioService-MSI
-          path: dist/*.msi
+          path: JellyfinAudioService-win64.msi
