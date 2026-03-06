@@ -61,6 +61,7 @@ This guide explains how to create and use the MSI installer for the Jellyfin Aud
 
 - **Service won't start:** Check the service logs in the installation directory (`service.log`)
 - **Web interface not accessible:** Verify the service is running and port 8080 is not blocked
+- **Web UI still works after stopping the service:** Another process is using port 8080. It may be a standalone run (e.g. you ran `python app.py` or JellyfinAudioServiceUI.exe and it's still open). Run `find_port_8080.bat` from the install folder to see which process has the port; then close that app or stop that process (or run `taskkill /PID <pid> /F` as Administrator).
 - **UNC path access denied:** Configure the service to run under an account with network access
 - **FFmpeg not found:** Ensure FFmpeg is in PATH or configure the path in the web interface
 

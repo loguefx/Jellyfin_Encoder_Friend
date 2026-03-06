@@ -81,18 +81,15 @@ echo ========================================
 echo MSI installer created successfully!
 echo ========================================
 echo.
-echo The installer can be found in the 'dist' directory.
+echo The installer is in the 'dist' directory.
 echo.
-echo Installation instructions:
-echo 1. Copy the MSI file to your target server
-echo 2. Run the MSI installer (requires Administrator rights)
-echo 3. After installation, the service files will be in:
-echo    C:\Program Files\JellyfinAudioService\
-echo 4. To install the Windows service, run:
-echo    "C:\Program Files\JellyfinAudioService\JellyfinAudioService.exe" install
-echo 5. To start the service, run:
-echo    "C:\Program Files\JellyfinAudioService\JellyfinAudioService.exe" start
-echo    Or use Windows Services Manager
+echo When you run the MSI (as Administrator):
+echo - On upgrade: the installer stops and removes the existing service, then installs the new version and registers the service.
+echo - On first install: the installer copies files and registers the Windows service. No manual commands needed.
+echo - On uninstall: the installer stops and removes the service, then removes files.
+echo.
+echo After installation, start the service from Windows Services (services.msc) or run:
+echo   "C:\Program Files\JellyfinAudioService\JellyfinAudioService.exe" start
 echo.
 echo Note: FFmpeg must be installed separately on the target server.
 echo.

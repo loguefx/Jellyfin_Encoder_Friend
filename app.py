@@ -1172,7 +1172,10 @@ if __name__ == '__main__':
             print(f"Port {port} is available.", flush=True)
         except OSError as e:
             print(f"ERROR: Port {port} is already in use!", flush=True)
-            print(f"Please stop the other service or change the port in config.json", flush=True)
+            print(f"Another process is serving on this port. It could be:", flush=True)
+            print(f"  - The Windows service (Jellyfin Audio Conversion Service) - stop it in services.msc", flush=True)
+            print(f"  - A previous run of this app (JellyfinAudioServiceUI.exe or python app.py) - close that window or task", flush=True)
+            print(f"Run find_port_8080.bat in this folder to see which process is using the port.", flush=True)
             sys.exit(1)
         print()
         
