@@ -123,21 +123,9 @@ except Exception as e:
     _write_crash(traceback.format_exc())
     raise
 
-try:
-    _write_crash("Importing application modules...")
-    import schedule
-    _write_crash("[OK] schedule")
-    import config
-    _write_crash("[OK] config")
-    import scanner
-    _write_crash("[OK] scanner")
-    import transcoder
-    _write_crash("[OK] transcoder")
-except Exception as e:
-    _write_crash(f"[FAIL] Application module import error: {e}")
-    import traceback
-    _write_crash(traceback.format_exc())
-    raise
+# Defer config, scanner, transcoder, schedule until after SERVICE_RUNNING (in SvcDoRun).
+# Loading them at module import causes Error 1053 on boot when the service doesn't
+# respond to the start request within the default 30-second timeout.
 
 # Configure logging
 # Try to use executable directory, fallback to script directory
@@ -207,8 +195,9 @@ class JellyfinAudioService(win32serviceutil.ServiceFramework):
         win32event.SetEvent(self.stop_event)
         _write_crash("[OK] Stop event signaled, running=False")
         
-        # Stop scheduled tasks
+        # Stop scheduled tasks (schedule is imported in SvcDoRun; may not exist if stop before run)
         try:
+            import schedule
             schedule.clear()
             logger.info("Scheduled tasks cleared")
             _write_crash("[OK] Scheduled tasks cleared")
@@ -287,7 +276,7 @@ class JellyfinAudioService(win32serviceutil.ServiceFramework):
             import traceback
             _write_crash(traceback.format_exc())
         
-        # Report SERVICE_RUNNING immediately after logging
+        # Report SERVICE_RUNNING immediately after logging (before any heavy imports)
         try:
             _write_crash("Reporting SERVICE_RUNNING...")
             self.ReportServiceStatus(win32service.SERVICE_RUNNING)
@@ -297,6 +286,22 @@ class JellyfinAudioService(win32serviceutil.ServiceFramework):
             import traceback
             _write_crash(traceback.format_exc())
         
+        # Now safe to load application modules (avoids Error 1053 startup timeout)
+        try:
+            _write_crash("Importing application modules (deferred)...")
+            import config
+            import scanner
+            import transcoder
+            import schedule
+            _write_crash("[OK] Application modules imported")
+        except Exception as e:
+            _write_crash(f"[FAIL] Deferred import error: {e}")
+            import traceback
+            _write_crash(traceback.format_exc())
+            logger.error(f"Failed to import application modules: {e}", exc_info=True)
+            servicemanager.LogErrorMsg(f"Service import error: {e}")
+            return
+
         # Set working directory immediately
         try:
             if getattr(sys, 'frozen', False):

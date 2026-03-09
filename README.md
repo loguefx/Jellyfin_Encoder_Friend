@@ -128,6 +128,28 @@ By default, backups are stored in a `backups/` subdirectory relative to each sou
 - **Permission Errors**: Service may need elevated permissions for some operations
 - **Logs**: Check service logs for detailed error information
 
+### Service won't start after reboot (Error 1053)
+
+If Windows reports *"The service did not respond to the start or control request in a timely fashion"* (Error 1053), the service was taking too long to start. Recent builds report "running" to Windows before loading heavy modules, which should prevent this. If you still see it:
+
+1. Reinstall using the latest MSI (rebuild with `build_msi.bat` if needed).
+2. Optionally increase the system service startup timeout: in Registry Editor go to `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control`, create or set `ServicesPipeTimeout` (DWORD) to a value in milliseconds (e.g. `60000` for 60 seconds). Restart the computer after changing it.
+
+### Uninstall fails (Error 2762 or MSI won't uninstall)
+
+If the MSI uninstaller fails (e.g. error 2762) or the service is stuck:
+
+1. **Remove the service manually:** Right-click **Command Prompt** or **PowerShell** → **Run as administrator**, then run from the project or install folder:
+   ```bat
+   manual_uninstall_service.bat
+   ```
+   Or run these commands directly:
+   ```bat
+   sc stop JellyfinAudioService
+   sc delete JellyfinAudioService
+   ```
+2. Then uninstall the app via **Settings → Apps → JellyfinAudioService** (or run the MSI uninstaller again).
+
 
 
 

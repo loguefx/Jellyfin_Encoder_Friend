@@ -35,6 +35,8 @@ if Path("InstallServiceCA.bat").exists():
     include_files.append(("InstallServiceCA.bat", "InstallServiceCA.bat"))
 if Path("UninstallServiceCA.bat").exists():
     include_files.append(("UninstallServiceCA.bat", "UninstallServiceCA.bat"))
+if Path("manual_uninstall_service.bat").exists():
+    include_files.append(("manual_uninstall_service.bat", "manual_uninstall_service.bat"))
 if Path("post_install.bat").exists():
     include_files.append(("post_install.bat", "post_install.bat"))
 if Path("diagnose_service.bat").exists():
