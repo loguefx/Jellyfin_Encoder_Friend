@@ -37,6 +37,8 @@ if Path("UninstallServiceCA.bat").exists():
     include_files.append(("UninstallServiceCA.bat", "UninstallServiceCA.bat"))
 if Path("manual_uninstall_service.bat").exists():
     include_files.append(("manual_uninstall_service.bat", "manual_uninstall_service.bat"))
+if Path("Register Jellyfin Service.bat").exists():
+    include_files.append(("Register Jellyfin Service.bat", "Register Jellyfin Service.bat"))
 if Path("post_install.bat").exists():
     include_files.append(("post_install.bat", "post_install.bat"))
 if Path("diagnose_service.bat").exists():
@@ -149,21 +151,10 @@ executables = [
     ),
 ]
 
-# Custom actions: run batch files so install/uninstall never fail the MSI (exit 0 always).
-# Type 3106 = 34 (exe in directory) + 3072 (deferred, elevated). Must run between InstallInitialize and InstallFinalize (else error 2762).
-# Run after InstallFiles (4000) so TARGETDIR has the batch and exe. Use 5000 to stay well before InstallFinalize (6600).
-_msi_custom_actions = [
-    ("InstallJellyfinService", 3106, "TARGETDIR", 'cmd.exe /c InstallServiceCA.bat'),
-    ("UninstallJellyfinService", 3106, "TARGETDIR", 'cmd.exe /c UninstallServiceCA.bat'),
-]
-_msi_install_sequence = [
-    ("InstallJellyfinService", "NOT REMOVE", 5000),       # After InstallFiles (4000), before InstallFinalize (6600)
-    ("UninstallJellyfinService", 'REMOVE~="ALL"', 1550),  # During remove only: after InstallInitialize (1500)
-]
-msi_data = {
-    "CustomAction": _msi_custom_actions,
-    "InstallExecuteSequence": _msi_install_sequence,
-}
+# No MSI custom actions: deferred custom actions cause Error 2762 on many systems.
+# The MSI only copies files. After install, run "Register Jellyfin Service.bat" as Administrator
+# to register the Windows service. Before uninstall, run manual_uninstall_service.bat if needed.
+msi_data = {}
 
 # MSI options - Install to 64-bit Program Files (not x86)
 msi_options = {

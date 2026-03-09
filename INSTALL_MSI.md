@@ -14,7 +14,10 @@ This guide explains how to create and use the MSI installer for the Jellyfin Aud
    - Or run: `msiexec /i JellyfinAudioService-1.0.0-win64.msi`
    - Follow the installation wizard
 
-2. **Windows service is installed automatically** by the MSI. You do **not** need to run any PowerShell or Command Prompt commands to register the service.
+2. **Register the Windows service** (required after install):
+   - Open the install folder (e.g. `C:\Program Files\JellyfinAudioService`)
+   - Right-click **Register Jellyfin Service.bat** → **Run as administrator**
+   - Or from an elevated Command Prompt: `"C:\Program Files\JellyfinAudioService\JellyfinAudioService.exe" install`
 
 3. **Start the Service** (if it is not set to auto-start):
    - Open Windows Services (services.msc), find "Jellyfin Audio Conversion Service", then Right-click → Start
@@ -55,10 +58,12 @@ This guide explains how to create and use the MSI installer for the Jellyfin Aud
 
 ## Uninstalling
 
-**Uninstall from Windows:** Use "Add or Remove Programs" (Settings > Apps), find "JellyfinAudioService", and click Uninstall. The MSI automatically stops and removes the Windows service before removing files; you do not need to run any commands manually.
+1. **Remove the Windows service first** (recommended): Right-click **manual_uninstall_service.bat** in the install folder → Run as administrator. Or from an elevated Command Prompt: `sc stop JellyfinAudioService` then `sc delete JellyfinAudioService`.
+2. **Uninstall the app:** Use "Add or Remove Programs" (Settings > Apps), find "JellyfinAudioService", and click Uninstall.
 
 ## Troubleshooting
 
+- **Error 2762 during install:** Newer MSI builds no longer run service registration from the installer (to avoid this error). Install the MSI; then run **Register Jellyfin Service.bat** as Administrator from the install folder to register the service.
 - **Service won't start:** Check the service logs in the installation directory (`service.log`)
 - **Web interface not accessible:** Verify the service is running and port 8080 is not blocked
 - **Web UI still works after stopping the service:** Another process is using port 8080. It may be a standalone run (e.g. you ran `python app.py` or JellyfinAudioServiceUI.exe and it's still open). Run `find_port_8080.bat` from the install folder to see which process has the port; then close that app or stop that process (or run `taskkill /PID <pid> /F` as Administrator).

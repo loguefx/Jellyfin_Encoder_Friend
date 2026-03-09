@@ -28,10 +28,11 @@ A Windows service that monitors video libraries on UNC paths, scans for audio co
    - **Build locally:** Run `build_msi.bat`; the MSI is created in the `dist` directory.
 
 2. Install on target server:
-   - Run the MSI installer (requires Administrator rights). The installer **registers the Windows service automatically**—no manual PowerShell or command steps.
+   - Run the MSI installer (requires Administrator rights).
+   - After install, open the install folder (e.g. `C:\Program Files\JellyfinAudioService`), right-click **Register Jellyfin Service.bat** → **Run as administrator** to register the Windows service.
    - Start the service from Services (services.msc) or run `JellyfinAudioService.exe start` from the install folder if needed.
 
-3. See [INSTALL_MSI.md](INSTALL_MSI.md) for detailed instructions. Uninstalling via "Add or Remove Programs" **removes the Windows service automatically**.
+3. See [INSTALL_MSI.md](INSTALL_MSI.md) for detailed instructions. Before uninstalling, run **manual_uninstall_service.bat** as Administrator to remove the service, then uninstall via "Add or Remove Programs".
 
 ### Option 2: Manual Installation (Development)
 
