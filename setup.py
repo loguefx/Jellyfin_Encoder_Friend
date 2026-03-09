@@ -151,10 +151,9 @@ executables = [
     ),
 ]
 
-# No MSI custom actions: deferred custom actions cause Error 2762 on many systems.
-# The MSI only copies files. After install, run "Register Jellyfin Service.bat" as Administrator
-# to register the Windows service. Before uninstall, run manual_uninstall_service.bat if needed.
-msi_data = {}
+# No MSI custom actions (omit "data" so no custom tables). Deferred actions cause Error 2762.
+# MSI only copies files. After install, run "Register Jellyfin Service.bat" as Administrator.
+# If upgrading: uninstall old version first (manual_uninstall_service.bat, then Apps > Uninstall).
 
 # MSI options - Install to 64-bit Program Files (not x86)
 msi_options = {
@@ -162,12 +161,11 @@ msi_options = {
     "initial_target_dir": r"[ProgramFiles64Folder]JellyfinAudioService",  # Use 64-bit folder
     "upgrade_code": "{A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D}",
     "all_users": True,  # Install for all users (requires Program Files)
-    "data": msi_data,
 }
 
 setup(
     name="JellyfinAudioService",
-    version="1.0.0",
+    version="1.0.9",
     description="Windows Service for Jellyfin Audio Conversion",
     author="Jellyfin Audio Service",
     options={

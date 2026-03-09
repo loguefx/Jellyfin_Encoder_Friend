@@ -136,6 +136,9 @@ If Windows reports *"The service did not respond to the start or control request
 1. Reinstall using the latest MSI (rebuild with `build_msi.bat` if needed).
 2. Optionally increase the system service startup timeout: in Registry Editor go to `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control`, create or set `ServicesPipeTimeout` (DWORD) to a value in milliseconds (e.g. `60000` for 60 seconds). Restart the computer after changing it.
 
+### Error 2762 when installing
+Use the **Inno Setup** installer instead of the MSI: run **`build_exe_for_inno.bat`**, install [Inno Setup 6](https://jrsoftware.org/isdl.php), open **`JellyfinAudioService.iss`** in Inno Setup Compiler and Compile. Run **`dist\JellyfinAudioService-setup.exe`** to install (no MSI, no 2762). Then run **Register Jellyfin Service.bat** as Administrator.
+
 ### Uninstall fails (Error 2762 or MSI won't uninstall)
 
 If the MSI uninstaller fails (e.g. error 2762) or the service is stuck:

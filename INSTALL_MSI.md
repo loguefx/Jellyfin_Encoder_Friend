@@ -5,7 +5,8 @@ This guide explains how to create and use the MSI installer for the Jellyfin Aud
 ## Getting the MSI
 
 - **From GitHub Releases:** Go to your repository’s **Releases** page. Create a new release with a tag (e.g. `v1.0.0`) and publish. The GitHub Action runs, builds the MSI, and attaches it to that release. Download the `.msi` from the release assets. (You can also push a tag from the command line: `git tag v1.0.0 && git push origin v1.0.0`; the Action will create the release and attach the MSI.)
-- **Build locally:** Run `build_msi.bat` or `python setup.py bdist_msi`. The MSI is created in the `dist` directory.
+- **Build MSI locally:** Run `build_msi.bat` or `python setup.py bdist_msi`. The MSI is in the `dist` directory.
+- **If MSI fails with Error 2762:** Use the Inno Setup installer: run `build_exe_for_inno.bat`, install [Inno Setup 6](https://jrsoftware.org/isdl.php), open `JellyfinAudioService.iss` in Inno Setup Compiler and Compile. Run `dist\JellyfinAudioService-setup.exe` to install. Then run **Register Jellyfin Service.bat** as Administrator.
 
 ## Installing on Target Server
 
@@ -61,9 +62,18 @@ This guide explains how to create and use the MSI installer for the Jellyfin Aud
 1. **Remove the Windows service first** (recommended): Right-click **manual_uninstall_service.bat** in the install folder → Run as administrator. Or from an elevated Command Prompt: `sc stop JellyfinAudioService` then `sc delete JellyfinAudioService`.
 2. **Uninstall the app:** Use "Add or Remove Programs" (Settings > Apps), find "JellyfinAudioService", and click Uninstall.
 
+## Upgrading from an older version
+
+**If you see Error 2762 when installing**, you are likely upgrading and the old installer’s custom actions are still involved. Do a **full uninstall first**, then install the new MSI:
+
+1. Open the *current* install folder (e.g. `C:\Program Files\JellyfinAudioService`). Right-click **manual_uninstall_service.bat** → **Run as administrator** (removes the Windows service).
+2. Open **Settings → Apps → Apps & features**, find **JellyfinAudioService**, click **Uninstall**.
+3. Install the **new** MSI (e.g. v1.0.8 or later from Releases). Use the MSI you just downloaded; do not reuse an old one from Downloads.
+4. After install, run **Register Jellyfin Service.bat** as Administrator from the new install folder.
+
 ## Troubleshooting
 
-- **Error 2762 during install:** Newer MSI builds no longer run service registration from the installer (to avoid this error). Install the MSI; then run **Register Jellyfin Service.bat** as Administrator from the install folder to register the service.
+- **Error 2762 during install:** Use the **Inno Setup** installer instead: run `build_exe_for_inno.bat`, install Inno Setup 6, open `JellyfinAudioService.iss` and Compile, then run `dist\JellyfinAudioService-setup.exe`. That installer does not use MSI and will not show 2762. After install, run **Register Jellyfin Service.bat** as Administrator.
 - **Service won't start:** Check the service logs in the installation directory (`service.log`)
 - **Web interface not accessible:** Verify the service is running and port 8080 is not blocked
 - **Web UI still works after stopping the service:** Another process is using port 8080. It may be a standalone run (e.g. you ran `python app.py` or JellyfinAudioServiceUI.exe and it's still open). Run `find_port_8080.bat` from the install folder to see which process has the port; then close that app or stop that process (or run `taskkill /PID <pid> /F` as Administrator).
