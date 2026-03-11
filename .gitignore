@@ -26,6 +26,8 @@ file_cache.json
 .cursor/
 backups/
 *.log
+debug*.log
+Stop
 .DS_Store
 Thumbs.db
 

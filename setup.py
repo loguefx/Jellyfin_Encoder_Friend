@@ -26,50 +26,16 @@ if static_dir.exists():
             include_files.append((str(static_file), str(rel_path)))
 if Path("config.json").exists():
     include_files.append(("config.json", "config.json"))
-# Include cache file if it exists (for tracking processed files)
 if Path("file_cache.json").exists():
     include_files.append(("file_cache.json", "file_cache.json"))
-if Path("install_service_helper.bat").exists():
-    include_files.append(("install_service_helper.bat", "install_service_helper.bat"))
-if Path("InstallServiceCA.bat").exists():
-    include_files.append(("InstallServiceCA.bat", "InstallServiceCA.bat"))
-if Path("UninstallServiceCA.bat").exists():
-    include_files.append(("UninstallServiceCA.bat", "UninstallServiceCA.bat"))
 if Path("manual_uninstall_service.bat").exists():
     include_files.append(("manual_uninstall_service.bat", "manual_uninstall_service.bat"))
 if Path("Register Jellyfin Service.bat").exists():
     include_files.append(("Register Jellyfin Service.bat", "Register Jellyfin Service.bat"))
-if Path("post_install.bat").exists():
-    include_files.append(("post_install.bat", "post_install.bat"))
-if Path("diagnose_service.bat").exists():
-    include_files.append(("diagnose_service.bat", "diagnose_service.bat"))
-if Path("test_service_exe.bat").exists():
-    include_files.append(("test_service_exe.bat", "test_service_exe.bat"))
-if Path("run_service_terminal.bat").exists():
-    include_files.append(("run_service_terminal.bat", "run_service_terminal.bat"))
-if Path("run_service_python.bat").exists():
-    include_files.append(("run_service_python.bat", "run_service_python.bat"))
-# Include Python source files for alternative Python mode
-if Path("service.py").exists():
-    include_files.append(("service.py", "service.py"))
-if Path("app.py").exists():
-    include_files.append(("app.py", "app.py"))
-if Path("config.py").exists():
-    include_files.append(("config.py", "config.py"))
-if Path("scanner.py").exists():
-    include_files.append(("scanner.py", "scanner.py"))
-if Path("transcoder.py").exists():
-    include_files.append(("transcoder.py", "transcoder.py"))
-if Path("cache.py").exists():
-    include_files.append(("cache.py", "cache.py"))
-if Path("backup.py").exists():
-    include_files.append(("backup.py", "backup.py"))
-if Path("find_crash.bat").exists():
-    include_files.append(("find_crash.bat", "find_crash.bat"))
-if Path("find_port_8080.bat").exists():
-    include_files.append(("find_port_8080.bat", "find_port_8080.bat"))
-if Path("test_with_python.bat").exists():
-    include_files.append(("test_with_python.bat", "test_with_python.bat"))
+# Python source (for alternative Python mode)
+for name in ("service.py", "app.py", "config.py", "scanner.py", "transcoder.py", "cache.py", "backup.py"):
+    if Path(name).exists():
+        include_files.append((name, name))
 
 # Build options
 build_exe_options = {
@@ -143,12 +109,6 @@ executables = [
         target_name="JellyfinAudioServiceUI.exe",
         icon=None,
     ),
-    Executable(
-        "test_minimal.py",
-        base=None,
-        target_name="TestMinimal.exe",
-        icon=None,
-    ),
 ]
 
 # No MSI custom actions (omit "data" so no custom tables). Deferred actions cause Error 2762.
@@ -165,7 +125,7 @@ msi_options = {
 
 setup(
     name="JellyfinAudioService",
-    version="1.0.9",
+    version="1.0.10",
     description="Windows Service for Jellyfin Audio Conversion",
     author="Jellyfin Audio Service",
     options={

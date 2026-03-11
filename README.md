@@ -21,20 +21,16 @@ A Windows service that monitors video libraries on UNC paths, scans for audio co
 
 ## Installation
 
-### Option 1: MSI Installer (Recommended for Server Deployment)
+### Option 1: Zip (recommended — no extra tools)
 
-1. Get the MSI:
-   - **From GitHub Releases:** Create a release (e.g. tag `v1.0.0`); the GitHub Action builds the MSI and attaches it to the release. Download the `.msi` from the release page.
-   - **Build locally:** Run `build_msi.bat`; the MSI is created in the `dist` directory.
+1. **Get the zip:** [Releases](https://github.com/loguefx/Jellyfin_Encoder_Friend/releases) → download **JellyfinAudioService-*-win64.zip**. Or run **`build_zip.bat`** in the project to create it (output in `dist\`).
+2. **Install:** Extract the zip to e.g. `C:\Program Files\JellyfinAudioService`. Right-click **Register Jellyfin Service.bat** → **Run as administrator** to register the Windows service.
+3. **Start:** Services (services.msc) or run `JellyfinAudioService.exe start` from the install folder.
+4. **Configure:** Open http://localhost:8080.
 
-2. Install on target server:
-   - Run the MSI installer (requires Administrator rights).
-   - After install, open the install folder (e.g. `C:\Program Files\JellyfinAudioService`), right-click **Register Jellyfin Service.bat** → **Run as administrator** to register the Windows service.
-   - Start the service from Services (services.msc) or run `JellyfinAudioService.exe start` from the install folder if needed.
+See [INSTALL.md](INSTALL.md) for uninstall and details.
 
-3. See [INSTALL_MSI.md](INSTALL_MSI.md) for detailed instructions. Before uninstalling, run **manual_uninstall_service.bat** as Administrator to remove the service, then uninstall via "Add or Remove Programs".
-
-### Option 2: Manual Installation (Development)
+### Option 2: Manual installation (development)
 
 1. Install Python dependencies:
 ```bash
@@ -136,8 +132,8 @@ If Windows reports *"The service did not respond to the start or control request
 1. Reinstall using the latest MSI (rebuild with `build_msi.bat` if needed).
 2. Optionally increase the system service startup timeout: in Registry Editor go to `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control`, create or set `ServicesPipeTimeout` (DWORD) to a value in milliseconds (e.g. `60000` for 60 seconds). Restart the computer after changing it.
 
-### Error 2762 when installing
-Use the **Inno Setup** installer instead of the MSI: run **`build_exe_for_inno.bat`**, install [Inno Setup 6](https://jrsoftware.org/isdl.php), open **`JellyfinAudioService.iss`** in Inno Setup Compiler and Compile. Run **`dist\JellyfinAudioService-setup.exe`** to install (no MSI, no 2762). Then run **Register Jellyfin Service.bat** as Administrator.
+### Error 2762 when using the MSI
+Use the **zip** install instead (see [INSTALL.md](INSTALL.md)): download the zip from Releases, extract, then run **Register Jellyfin Service.bat** as Administrator.
 
 ### Uninstall fails (Error 2762 or MSI won't uninstall)
 

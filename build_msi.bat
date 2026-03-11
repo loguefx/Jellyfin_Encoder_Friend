@@ -84,12 +84,14 @@ echo.
 echo The installer is in the 'dist' directory.
 echo.
 echo When you run the MSI (as Administrator):
-echo - On upgrade: the installer stops and removes the existing service, then installs the new version and registers the service.
-echo - On first install: the installer copies files and registers the Windows service. No manual commands needed.
-echo - On uninstall: the installer stops and removes the service, then removes files.
+echo - The installer copies all files to Program Files\JellyfinAudioService.
+echo - After the MSI completes, run "Register Jellyfin Service.bat" as Administrator
+echo   to register and start the Windows service.
+echo - On upgrade: uninstall the old version first (manual_uninstall_service.bat,
+echo   then Apps and Features), then install the new MSI and re-register.
 echo.
-echo After installation, start the service from Windows Services (services.msc) or run:
-echo   "C:\Program Files\JellyfinAudioService\JellyfinAudioService.exe" start
+echo To register the service after install:
+echo   Right-click "Register Jellyfin Service.bat" in the install folder, Run as administrator
 echo.
 echo Note: FFmpeg must be installed separately on the target server.
 echo.

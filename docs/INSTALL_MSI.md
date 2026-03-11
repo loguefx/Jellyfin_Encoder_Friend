@@ -2,6 +2,8 @@
 
 This guide explains how to create and use the MSI installer for the Jellyfin Audio Service.
 
+> **If the MSI fails with Error 2762:** Use the **Inno Setup** installer instead (see README **Option 1**). Run `build_exe_for_inno.bat`, install [Inno Setup 6](https://jrsoftware.org/isdl.php), open `JellyfinAudioService.iss` and Compile, then run `dist\JellyfinAudioService-setup.exe`. It does not use MSI and installs without 2762.
+
 ## Getting the MSI
 
 - **From GitHub Releases:** Go to your repository’s **Releases** page. Create a new release with a tag (e.g. `v1.0.0`) and publish. The GitHub Action runs, builds the MSI, and attaches it to that release. Download the `.msi` from the release assets. (You can also push a tag from the command line: `git tag v1.0.0 && git push origin v1.0.0`; the Action will create the release and attach the MSI.)

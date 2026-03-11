@@ -1,8 +1,7 @@
-# Build MSI and publish to GitHub Releases when a version tag is pushed.
-# - Tag push (e.g. v1.0.5): MSI is attached to that release.
-# - Manual run (workflow_dispatch): MSI is attached as a draft release "Build from main" and as an artifact.
+# Build zip and MSI, publish to GitHub Releases on tag push.
+# MSI installs files only; run "Register Jellyfin Service.bat" as admin after install to register the service.
 
-name: Build and Release MSI
+name: Build and Release
 
 on:
   push:
@@ -11,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-msi:
+  build:
     runs-on: windows-latest
     permissions:
       contents: write
@@ -24,51 +23,64 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install pip and build dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install cx_Freeze
 
+      - name: Build executable
+        run: python setup.py build_exe
+
+      - name: Create zip
+        id: zip
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $exeDir = Get-ChildItem -Path build -Directory -Filter "exe.win-*" | Select-Object -First 1
+          if (-not $exeDir) { Write-Error "No build\exe.win-* found"; exit 1 }
+          $version = (Select-String -Path setup.py -Pattern 'version="([^"]+)"').Matches.Groups[1].Value
+          if (-not $version) { $version = "1.0.0" }
+          $zipName = "JellyfinAudioService-$version-win64.zip"
+          Compress-Archive -Path "$($exeDir.FullName)\*" -DestinationPath "dist\$zipName" -Force
+          echo "zip_name=$zipName" >> $env:GITHUB_OUTPUT
+          echo "Created $zipName"
+
       - name: Build MSI
         run: python setup.py bdist_msi
 
-      - name: Verify MSI and prepare for upload
-        id: msi
+      - name: Prepare release assets
         run: |
-          $msi = Get-ChildItem -Path dist -Filter "*.msi" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $msi) { Write-Error "No MSI file found in dist"; exit 1 }
-          Write-Host "MSI: $($msi.FullName) ($($msi.Length) bytes)"
-          Copy-Item -LiteralPath $msi.FullName -Destination "JellyfinAudioService-win64.msi"
-          echo "msi_name=JellyfinAudioService-win64.msi" >> $env:GITHUB_OUTPUT
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          Copy-Item -Path "dist\JellyfinAudioService-*-win64.zip" -Destination "release\" -Force
+          $msi = Get-ChildItem -Path dist -Filter "*.msi" | Select-Object -First 1
+          if (-not $msi) { Write-Error "No MSI found in dist\"; exit 1 }
+          Copy-Item -LiteralPath $msi.FullName -Destination "release\JellyfinAudioService-win64.msi" -Force
 
-      # On tag push: attach MSI to the release for that tag
-      - name: Upload MSI to Release (tag)
+      - name: Upload to Release (tag)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: JellyfinAudioService-win64.msi
+          files: release/*
           draft: false
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # On manual run: create a draft release "Build from main" so the MSI appears under Releases
-      - name: Create draft release and upload MSI (manual run)
+      - name: Create draft release (manual run)
         if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-main-${{ github.run_id }}
           name: Build from main (${{ github.sha }})
-          body: "MSI built from **main** (manual workflow run). Download the MSI from Assets below."
-          files: JellyfinAudioService-win64.msi
+          body: "Download the **zip** for install (extract, then run Register Jellyfin Service.bat as admin)."
+          files: release/*
           draft: true
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload MSI artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: JellyfinAudioService-MSI
-          path: JellyfinAudioService-win64.msi
+          name: JellyfinAudioService-build
+          path: release/
