@@ -1,5 +1,6 @@
-# Build zip and MSI, publish to GitHub Releases on tag push.
-# MSI installs files only; run "Register Jellyfin Service.bat" as admin after install to register the service.
+# Build zip + Inno Setup exe installer, publish to GitHub Releases on tag push.
+# cx_Freeze bdist_msi is NOT used: it generates Error 2762 on Windows 11 due to
+# deferred custom actions scheduled before InstallInitialize in the execute sequence.
 
 name: Build and Release
 
@@ -45,16 +46,32 @@ jobs:
           echo "zip_name=$zipName" >> $env:GITHUB_OUTPUT
           echo "Created $zipName"
 
-      - name: Build MSI
-        run: python setup.py bdist_msi
+      - name: Build Inno Setup installer
+        run: |
+          # Update version in .iss to match setup.py
+          $version = (Select-String -Path setup.py -Pattern 'version="([^"]+)"').Matches.Groups[1].Value
+          (Get-Content JellyfinAudioService.iss) -replace '#define AppVersion ".*"', "#define AppVersion `"$version`"" |
+            Set-Content JellyfinAudioService.iss
+
+          # Locate the Inno Setup compiler (pre-installed on windows-latest)
+          $iscc = @(
+            "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+            "C:\Program Files\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { choco install innosetup -y --no-progress; $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" }
+
+          # Determine the build dir (Python version may vary on CI)
+          $buildDir = (Get-ChildItem -Path build -Directory -Filter "exe.win-*" | Select-Object -First 1).Name
+          & $iscc /DBuildDir="build\$buildDir" JellyfinAudioService.iss
+          if ($LASTEXITCODE -ne 0) { Write-Error "Inno Setup failed"; exit 1 }
 
       - name: Prepare release assets
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
           Copy-Item -Path "dist\JellyfinAudioService-*-win64.zip" -Destination "release\" -Force
-          $msi = Get-ChildItem -Path dist -Filter "*.msi" | Select-Object -First 1
-          if (-not $msi) { Write-Error "No MSI found in dist\"; exit 1 }
-          Copy-Item -LiteralPath $msi.FullName -Destination "release\JellyfinAudioService-win64.msi" -Force
+          $setup = Get-ChildItem -Path dist -Filter "*-setup.exe" | Select-Object -First 1
+          if (-not $setup) { Write-Error "No setup.exe found in dist\"; exit 1 }
+          Copy-Item -LiteralPath $setup.FullName -Destination "release\JellyfinAudioService-win64-setup.exe" -Force
 
       - name: Upload to Release (tag)
         if: startsWith(github.ref, 'refs/tags/')
@@ -72,7 +89,7 @@ jobs:
         with:
           tag_name: build-main-${{ github.run_id }}
           name: Build from main (${{ github.sha }})
-          body: "Download the **zip** for install (extract, then run Register Jellyfin Service.bat as admin)."
+          body: "**JellyfinAudioService-win64-setup.exe** = recommended installer (registers service automatically)\n**JellyfinAudioService-*-win64.zip** = manual install (extract, then run Register Jellyfin Service.bat as admin)"
           files: release/*
           draft: true
           generate_release_notes: false
