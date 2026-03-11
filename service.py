@@ -363,6 +363,7 @@ class JellyfinAudioService(win32serviceutil.ServiceFramework):
     def run_web_server(self):
         """Run Flask web server in background thread."""
         try:
+            import config
             from app import app
             from werkzeug.serving import make_server
             cfg = config.get_config()
@@ -401,6 +402,8 @@ class JellyfinAudioService(win32serviceutil.ServiceFramework):
     
     def setup_schedule(self):
         """Setup scheduled scans based on configuration."""
+        import config
+        import schedule
         schedule_config = config.get_scan_schedule()
         
         if not schedule_config.get('enabled', True):
@@ -425,6 +428,9 @@ class JellyfinAudioService(win32serviceutil.ServiceFramework):
     
     def run_scheduled_scan(self):
         """Run a scheduled scan and convert non-compliant files."""
+        import config
+        import scanner
+        import transcoder
         logger.info("Starting scheduled scan...")
         
         try:
@@ -479,6 +485,7 @@ class JellyfinAudioService(win32serviceutil.ServiceFramework):
     
     def main_loop(self):
         """Main service loop - runs scheduled tasks."""
+        import schedule
         logger.info("Service running. Waiting for scheduled tasks...")
         
         # Use shorter sleep intervals to keep service responsive to stop requests
