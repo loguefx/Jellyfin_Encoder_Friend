@@ -44,8 +44,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Source: "{#BuildDir}\JellyfinAudioService.exe";  DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\JellyfinAudioServiceUI.exe"; DestDir: "{app}"; Flags: ignoreversion
 
-; Python runtime and frozen libs
-Source: "{#BuildDir}\python313.dll"; DestDir: "{app}"; Flags: ignoreversion
+; Python runtime DLL (name varies by version: python311.dll, python313.dll, etc.)
+Source: "{#BuildDir}\python*.dll"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#BuildDir}\lib\*"; DestDir: "{app}\lib"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Web UI assets
