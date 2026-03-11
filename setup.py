@@ -119,13 +119,13 @@ executables = [
 msi_options = {
     "add_to_path": False,
     "initial_target_dir": r"[ProgramFiles64Folder]JellyfinAudioService",  # Use 64-bit folder
-    "upgrade_code": "{A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D}",
+    "upgrade_code": "{B2C3D4E5-F6A7-5B6C-9D0E-1F2A3B4C5D6E}",
     "all_users": True,  # Install for all users (requires Program Files)
 }
 
 setup(
     name="JellyfinAudioService",
-    version="1.0.10",
+    version="1.0.11",
     description="Windows Service for Jellyfin Audio Conversion",
     author="Jellyfin Audio Service",
     options={
