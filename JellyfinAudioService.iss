@@ -78,7 +78,7 @@ Filename: "{app}\JellyfinAudioService.exe"; Parameters: "remove"; Flags: runhidd
 
 ; Register and start the service after install
 Filename: "{app}\JellyfinAudioService.exe"; Parameters: "install"; Flags: runhidden waituntilterminated; StatusMsg: "Installing Windows service..."
-Filename: "{app}\JellyfinAudioService.exe"; Parameters: "start";   Flags: runhidden waituntilterminated nowait; StatusMsg: "Starting service..."; Check: not WizardSilent
+Filename: "{app}\JellyfinAudioService.exe"; Parameters: "start";   Flags: runhidden nowait; StatusMsg: "Starting service..."; Check: not WizardSilent
 
 [UninstallRun]
 Filename: "{app}\JellyfinAudioService.exe"; Parameters: "stop";   Flags: runhidden waituntilterminated; RunOnceId: "StopSvc"
