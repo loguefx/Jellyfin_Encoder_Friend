@@ -4,7 +4,7 @@
 ; The cx_Freeze build must be run first: python setup.py build_exe
 
 #define AppName "JellyfinAudioService"
-#define AppVersion "1.0.11"
+#define AppVersion "1.0.12"
 #define AppPublisher "Jellyfin Audio Service"
 #define AppURL "https://github.com/loguefx/Jellyfin_Encoder_Friend"
 #define AppExeName "JellyfinAudioService.exe"

@@ -125,7 +125,7 @@ msi_options = {
 
 setup(
     name="JellyfinAudioService",
-    version="1.0.11",
+    version="1.0.12",
     description="Windows Service for Jellyfin Audio Conversion",
     author="Jellyfin Audio Service",
     options={
