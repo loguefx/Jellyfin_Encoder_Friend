@@ -156,9 +156,23 @@ def convert_to_mp4_aac(source_file: Path, create_backup_first: bool = True, prog
         return False, "No streams found in video file"
     
     audio_streams = [s for s in streams if s.get('codec_type') == 'audio']
-    if not audio_streams:
-        return False, "No audio streams found in video file - cannot convert audio"
-    
+    # Valid audio streams must have at least one channel; streams with 0 channels are
+    # effectively empty and cause FFmpeg to produce a corrupt output if mapped.
+    valid_audio_streams = [s for s in audio_streams if int(s.get('channels', 0)) > 0]
+    has_valid_audio = len(valid_audio_streams) > 0
+
+    if not has_valid_audio:
+        if audio_streams:
+            logger.warning(
+                f"Audio streams found but none have valid channels (channels=0) in {source_file.name} "
+                "- will perform video-only conversion to avoid corrupting output"
+            )
+        else:
+            logger.info(
+                f"No audio streams found in {source_file.name} "
+                "- will perform video-only conversion"
+            )
+
     subtitle_streams = [s for s in streams if s.get('codec_type') == 'subtitle']
     has_subtitles = len(subtitle_streams) > 0
     
@@ -193,9 +207,9 @@ def convert_to_mp4_aac(source_file: Path, create_backup_first: bool = True, prog
         logger.info("Note: Subtitles will not be included in output MP4 file")
     
     original_channels = 2  # Default to stereo
-    if audio_streams:
+    if valid_audio_streams:
         try:
-            detected_channels = int(audio_streams[0].get('channels', 2))
+            detected_channels = int(valid_audio_streams[0].get('channels', 2))
             # If original has allowed channel count (2.0 or 5.1), preserve it
             if detected_channels in allowed_channels:
                 original_channels = detected_channels
@@ -254,20 +268,31 @@ def convert_to_mp4_aac(source_file: Path, create_backup_first: bool = True, prog
             """Try copying audio stream as fallback when re-encoding fails with exit code 69."""
             logger.info("Trying fallback: copying audio stream (may not meet compliance requirements)")
             
-            # Build fallback command with -c:a copy (MP4 output, no subtitles)
+            # Build fallback command with -c:a copy (MP4 output, no subtitles).
+            # Only map audio when valid audio streams exist to avoid producing corrupt output.
             fallback_cmd = [
                 ffmpeg_path,
                 '-i', str(source_file),
                 '-map', '0:v',  # Map video stream
-                '-map', '0:a',  # Map audio stream(s)
+            ]
+
+            if has_valid_audio:
+                fallback_cmd.extend(['-map', '0:a'])  # Map audio only when valid
+
+            fallback_cmd.extend([
                 '-c:v', 'copy',
-                '-c:a', 'copy',  # Copy audio without re-encoding
+            ])
+
+            if has_valid_audio:
+                fallback_cmd.extend(['-c:a', 'copy'])  # Copy audio without re-encoding
+
+            fallback_cmd.extend([
                 '-fflags', '+genpts+igndts+ignidx',
                 '-avoid_negative_ts', 'make_zero',
                 '-max_muxing_queue_size', '1024',
                 '-movflags', '+faststart',  # MP4 optimization
                 '-y',
-            ]
+            ])
             
             if output_format == 'MP4':
                 fallback_cmd.extend(['-movflags', '+faststart'])
@@ -389,24 +414,40 @@ def convert_to_mp4_aac(source_file: Path, create_backup_first: bool = True, prog
                 return False, f"Fallback conversion failed with exception: {e}"
         
         # Build FFmpeg command
-        # Always output MP4 - map video and audio only (no subtitles in MP4)
+        # Always output MP4 - map video stream; only map audio when valid audio exists.
+        # Mapping an invalid/empty audio stream (0 channels or no audio) causes FFmpeg to
+        # produce a corrupt output that passes the size check but is completely unplayable.
         cmd = [
             ffmpeg_path,
             '-i', str(source_file),
             '-map', '0:v',  # Map video stream
-            '-map', '0:a',  # Map audio stream(s)
+        ]
+
+        if has_valid_audio:
+            cmd.extend([
+                '-map', '0:a',  # Map audio stream(s) only when valid audio exists
+            ])
+
+        cmd.extend([
             '-c:v', 'copy',  # Copy video codec (no re-encoding)
-            '-c:a', audio_settings.get('codec', 'aac'),
-            '-profile:a', audio_settings.get('profile', 'aac_low'),
-            '-b:a', audio_settings.get('bitrate', '192k'),
-            '-ac', str(original_channels),  # Preserve original channels if allowed (2.0 or 5.1), otherwise stereo
+        ])
+
+        if has_valid_audio:
+            cmd.extend([
+                '-c:a', audio_settings.get('codec', 'aac'),
+                '-profile:a', audio_settings.get('profile', 'aac_low'),
+                '-b:a', audio_settings.get('bitrate', '192k'),
+                '-ac', str(original_channels),  # Preserve original channels if allowed (2.0 or 5.1), otherwise stereo
+            ])
+
+        cmd.extend([
             '-err_detect', 'ignore_err',  # Ignore decode errors and continue (handles corrupted streams)
             '-fflags', '+genpts+igndts+ignidx',  # Generate presentation timestamps, ignore decode timestamps and index (handles corrupted data)
             '-avoid_negative_ts', 'make_zero',  # Handle negative timestamps from corrupted data
             '-max_muxing_queue_size', '1024',  # Increase muxing queue size to handle problematic streams
             '-movflags', '+faststart',  # Optimize MP4 for streaming
             '-y',  # Overwrite output file
-        ]
+        ])
         
         # Note: Subtitles are not included in MP4 output
         # They are extracted to SRT files separately (for MKV sources) or ignored (for MP4 sources)
@@ -414,18 +455,24 @@ def convert_to_mp4_aac(source_file: Path, create_backup_first: bool = True, prog
             logger.info(f"File has {len(subtitle_streams)} subtitle stream(s) - subtitles will not be included in MP4 output")
             if extracted_srt_files:
                 logger.info(f"Subtitles extracted to external SRT files: {[str(f) for f in extracted_srt_files]}")
-        
+
+        if not has_valid_audio:
+            logger.info("Audio mapping skipped - performing video-only conversion")
+
         cmd.append(str(final_output))
         
         logger.info(f"Converting: {source_file} -> {final_output}")
         logger.info(f"FFmpeg command: {' '.join(cmd)}")
-        logger.info(f"Audio settings: codec={audio_settings.get('codec')}, profile={audio_settings.get('profile')}, bitrate={audio_settings.get('bitrate')}, channels={original_channels}")
+        if has_valid_audio:
+            logger.info(f"Audio settings: codec={audio_settings.get('codec')}, profile={audio_settings.get('profile')}, bitrate={audio_settings.get('bitrate')}, channels={original_channels}")
+        else:
+            logger.info("Audio settings: N/A (video-only conversion)")
         
         # Get source file size for progress estimation (must be before debug log that uses it)
         source_size = source_file.stat().st_size
         
         # #region agent log
-        _debug_log("H1", "transcoder.py:127", "FFmpeg command built", {"cmd": cmd, "has_subtitles": has_subtitles, "final_output": str(final_output), "source_size": source_size})
+        _debug_log("H1", "transcoder.py:127", "FFmpeg command built", {"cmd": cmd, "has_subtitles": has_subtitles, "has_valid_audio": has_valid_audio, "final_output": str(final_output), "source_size": source_size})
         # #endregion
         
         # Run FFmpeg with progress tracking

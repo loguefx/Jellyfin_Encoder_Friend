@@ -150,7 +150,10 @@ def check_audio_compliance(probe_data: Dict, file_path: Path) -> Tuple[bool, str
     audio_streams = [s for s in probe_data.get('streams', []) if s.get('codec_type') == 'audio']
     
     if not audio_streams:
-        return False, "No audio stream found"
+        # Video-only file: no audio track exists, so there is nothing to convert.
+        # Attempting audio conversion on these files produces a corrupt output.
+        # A video-only file in a supported container with a supported codec is playable as-is.
+        return True, "Compliant - video only (no audio stream)"
     
     # Check each audio stream
     for stream in audio_streams:
